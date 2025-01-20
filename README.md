@@ -92,4 +92,62 @@ systems.
        - video_frame_manager
        - video_quality
        - video_reader
-       - video_reconstructor 
+       - video_reconstructor
+
+# Golf Swing Analysis Pipeline Documentation
+
+## Overview
+The golf swing analysis system consists of several key components working together to analyze golf swings from video input. The pipeline integrates pose estimation, club tracking, and phase detection to provide comprehensive swing analytics.
+
+## Core Components
+
+### 1. Pose Detection
+- **Algorithm**: MediaPipe Pose
+- **Purpose**: Extracts 33 body landmarks in 3D space
+- **Key Features**:
+  - Real-time pose detection
+  - Confidence scoring for each keypoint
+  - 3D coordinate estimation
+- **Implementation Details**:
+  - Minimum detection confidence: 0.7
+  - Minimum tracking confidence: 0.5
+  - Frame-by-frame pose extraction
+
+### 2. Club Tracking
+- **Algorithm**: Optical Flow + CSRT Tracker
+- **Purpose**: Tracks club head position throughout swing
+- **Process Flow**:
+  1. Initial club head detection using template matching
+  2. Tracking maintenance using CSRT algorithm
+  3. Path smoothing using Kalman filter
+- **Parameters**:
+  - Quality level: 0.3
+  - Min distance between points: 7
+  - Max points tracked: 200
+
+### 3. Swing Phase Detection
+- **Method**: Pose-based angle analysis
+- **Phases Detected**:
+  1. Setup
+  2. Takeaway
+  3. Backswing
+  4. Top of swing
+  5. Downswing
+  6. Impact
+  7. Follow-through
+- **Detection Criteria**:
+  - Angular thresholds for key joints
+  - Temporal sequence validation
+  - Smoothing window: 5 frames
+
+## Data Flow
+
+```mermaid
+graph TD
+    A[Video Input] --> B[Frame Extraction]
+    B --> C[Pose Detection]
+    B --> D[Club Tracking]
+    C --> E[Phase Detection]
+    D --> E
+    E --> F[Metrics Calculation]
+    F --> G[Results Generation]
