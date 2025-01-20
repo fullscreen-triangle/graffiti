@@ -1,0 +1,12 @@
+# athletic_metrics/config/default_config.yaml
+
+athlete_detection:
+  enabled: true
+  method: "hog"  # or other methods when implemented
+  detail_level: "GROUND"  # BASIC, POSITION, GROUND, or DETAILED
+  confidence_threshold: 0.3
+  tracking_threshold: 50
+  grass_detection:
+    enabled: true
+    hsv_lower: [35, 30, 30]
+    hsv_upper: [85, 255, 255]

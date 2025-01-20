@@ -1,0 +1,111 @@
+# Biomechanics Analysis Pipeline Configuration
+
+# Detection settings
+detection:
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  model_path: "models/yolov8m.pt"
+  device: "cuda"  # or "cpu"
+
+# Processing settings
+processing:
+  max_workers: 4
+  fps: 30
+  frame_size: [1280, 720]  # width, height
+  batch_size: 16
+
+# Analysis parameters
+analysis:
+  # Kinematics settings
+  kinematics:
+    smoothing_window: 5
+    derivative_method: "finite_difference"  # or "savitzky_golay"
+    filter:
+      type: "butterworth"
+      cutoff_freq: 6.0
+      order: 4
+
+  # Dynamics settings
+  dynamics:
+    segment_masses:
+      foot: 0.0145
+      shank: 0.0465
+      thigh: 0.100
+      trunk: 0.497
+      arm: 0.028
+      forearm: 0.016
+      hand: 0.006
+    gravity: 9.81
+    moment_of_inertia_method: "geometric"
+
+  # Ground Reaction Force settings
+  grf:
+    contact_threshold: 0.1
+    force_plate_dimensions: [0.6, 0.4]  # meters
+    sampling_rate: 1000
+    filter:
+      type: "lowpass"
+      cutoff_freq: 20.0
+
+  # Stability analysis
+  stability:
+    window_size: 30
+    cop_threshold: 0.05
+    stability_metrics:
+      - "sway_area"
+      - "path_length"
+      - "mean_velocity"
+      - "frequency_domain"
+    base_of_support:
+      margin: 0.05
+      min_points: 3
+
+# Visualization settings
+visualization:
+  draw_skeleton: true
+  draw_angles: true
+  draw_forces: true
+  draw_grf: true
+  draw_stability: true
+  colors:
+    skeleton: [0, 255, 0]
+    angles: [255, 255, 0]
+    forces: [255, 0, 0]
+    grf: [0, 0, 255]
+    com: [255, 165, 0]
+    stability_region: [128, 0, 128]
+  text_overlay:
+    font_scale: 0.6
+    thickness: 1
+    margin: 10
+    position: "top_left"  # or "top_right", "bottom_left", "bottom_right"
+
+# Output settings
+output:
+  save_results: true
+  output_dir: "results/"
+  format: "csv"  # or "json"
+  video:
+    save_video: true
+    codec: "mp4v"
+    fps: 30
+    include_overlay: true
+  metrics:
+    save_raw_data: true
+    export_figures: true
+    summary_statistics: true
+
+# Logging settings
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "biomech_analysis.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Advanced settings
+advanced:
+  debug_mode: false
+  profile_performance: false
+  cache_results: true
+  cache_dir: ".cache/"
+  num_retries: 3
+  timeout: 30.0  # seconds

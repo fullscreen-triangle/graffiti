@@ -1,0 +1,48 @@
+# boxing_analysis.yaml
+models:
+  pose_detection: "models/pose_detection_v2.pth"
+  action_classification: "models/boxing_classifier_v1.pth"
+  pattern_templates: "models/boxing_patterns.json"
+
+video_processing:
+  fps: 60
+  resize_width: 1280
+  resize_height: 720
+  max_workers: 4
+  batch_size: 16
+  use_gpu: true
+
+detection:
+  confidence_threshold: 0.65
+  action_threshold: 0.75
+  nms_threshold: 0.45
+
+tracking:
+  max_athletes: 2
+  iou_threshold: 0.5
+  movement_threshold: 0.2
+  window_size: 15
+
+analysis:
+  # Boxing-specific Analysis
+  punch_detection_threshold: 0.8
+  combo_window: 20
+  contact_threshold: 0.7
+
+  # Motion Analysis
+  trajectory_smoothing: 5
+  velocity_threshold: 0.7
+  acceleration_threshold: 1.2
+
+  # Pattern Analysis
+  pattern_similarity: 0.8
+  min_sequence_length: 5
+
+output:
+  storage_path: "data/boxing/"
+  visualization:
+    draw_bbox: true
+    draw_skeleton: true
+    draw_trajectories: true
+    draw_punch_detection: true
+    draw_combo_detection: true

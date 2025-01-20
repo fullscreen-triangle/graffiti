@@ -1,0 +1,46 @@
+# athletics_analysis.yaml
+models:
+  pose_detection: "models/pose_detection_v2.pth"
+  action_classification: "models/athletics_classifier_v1.pth"
+  scene_detection: "models/scene_detector_v1.pth"
+
+video_processing:
+  fps: 60
+  resize_width: 1920
+  resize_height: 1080
+  max_workers: 4
+  batch_size: 16
+  use_gpu: true
+
+detection:
+  confidence_threshold: 0.65
+  nms_threshold: 0.45
+  min_detection_size: [64, 64]
+
+tracking:
+  max_athletes: 8
+  iou_threshold: 0.5
+  movement_threshold: 0.15
+
+analysis:
+  # Athletics-specific Analysis
+  lane_detection: true
+  stride_analysis: true
+
+  # Biomechanics
+  grf_estimation_method: "neural"
+  joint_angle_smoothing: 5
+
+  # Motion Analysis
+  trajectory_smoothing: 5
+  velocity_threshold: 0.6
+  acceleration_threshold: 1.0
+
+output:
+  storage_path: "data/athletics/"
+  visualization:
+    draw_bbox: true
+    draw_skeleton: true
+    draw_trajectories: true
+    draw_lanes: true
+    draw_stride_metrics: true

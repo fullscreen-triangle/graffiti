@@ -1,0 +1,26 @@
+# athletic_metrics/config/default_config.yaml
+video_processing:
+  storage_path: "data/processed"
+  target_resolution: [640, 480]
+  compression_level: 7
+  frame_step: 1
+  quality_metrics:
+    enabled: true
+    metrics:
+      - brightness
+      - contrast
+      - blur
+      - noise
+      - frame_difference
+    plot_metrics: true
+    save_plots: true
+  preprocessing:
+    denoise: false
+    stabilize: false
+    enhance_contrast: false
+
+output:
+  save_format: "h5"
+  logging_level: "INFO"
+  plots_directory: "outputs/plots"
+  reports_directory: "outputs/reports"

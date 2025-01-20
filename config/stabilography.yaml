@@ -1,0 +1,37 @@
+# stabilography_analysis.yaml
+models:
+  pose_detection: "models/pose_detection_v2.pth"
+  scene_detection: "models/scene_detector_v1.pth"
+
+video_processing:
+  fps: 30
+  resize_width: 720
+  resize_height: 480
+  max_workers: 2
+  batch_size: 8
+  use_gpu: true
+  precision: "float32"
+
+detection:
+  confidence_threshold: 0.7
+  nms_threshold: 0.45
+  min_detection_size: [64, 64]
+
+analysis:
+  # Stability Analysis
+  stability_window: 30
+  com_threshold: 0.08
+  balance_threshold: 0.12
+
+  # Movement Detection
+  movement_threshold: 0.05
+  window_size: 15
+
+output:
+  storage_path: "data/stabilography/"
+  export_format: "json"
+  metrics_precision: 4
+  visualization:
+    draw_skeleton: true
+    draw_com: true
+    draw_stability_metrics: true

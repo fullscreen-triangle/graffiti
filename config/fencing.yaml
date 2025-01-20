@@ -1,0 +1,46 @@
+# fencing_analysis.yaml
+models:
+  pose_detection: "models/pose_detection_v2.pth"
+  action_classification: "models/fencing_classifier_v1.pth"
+  pattern_templates: "models/fencing_patterns.json"
+
+video_processing:
+  fps: 120
+  resize_width: 1920
+  resize_height: 1080
+  max_workers: 4
+  batch_size: 16
+  use_gpu: true
+
+detection:
+  confidence_threshold: 0.7
+  action_threshold: 0.8
+  nms_threshold: 0.4
+
+tracking:
+  max_athletes: 2
+  iou_threshold: 0.5
+  movement_threshold: 0.15
+  window_size: 20
+
+analysis:
+  # Fencing-specific Analysis
+  blade_detection_threshold: 0.75
+  touch_detection_threshold: 0.8
+
+  # Motion Analysis
+  trajectory_smoothing: 3
+  velocity_threshold: 0.8
+  acceleration_threshold: 1.5
+
+  # Pattern Analysis
+  pattern_similarity: 0.85
+  min_sequence_length: 4
+
+output:
+  storage_path: "data/fencing/"
+  visualization:
+    draw_bbox: true
+    draw_skeleton: true
+    draw_blade_tracking: true
+    draw_touch_detection: true

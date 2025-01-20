@@ -1,0 +1,28 @@
+golf_analysis:
+  pose_detection:
+    model: "mediapipe"
+    confidence_threshold: 0.7
+    min_tracking_confidence: 0.5
+
+  club_tracking:
+    detection_method: "optical_flow"
+    min_points: 10
+    max_points: 200
+    quality_level: 0.3
+    min_distance: 7
+
+  ball_tracking:
+    detection_method: "template_matching"
+    search_window: [100, 100]
+    ball_size_range: [10, 30]
+
+  phase_detection:
+    method: "pose_based"
+    smoothing_window: 5
+    key_angle_threshold: 15
+
+  visualization:
+    output_fps: 30
+    draw_pose: true
+    draw_club_path: true
+    draw_metrics: true
