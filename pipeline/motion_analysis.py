@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
+from .scene_analysis import SceneAnalysisPipeline
 from ..core.pose_detector import PoseDetector
 from ..core.movement_tracker import MovementTracker
 from ..motion.motion_classifier import ActionClassifier
@@ -27,21 +28,20 @@ class MotionSegment:
     metrics: Dict
 
 
-class MotionAnalysisPipeline:
+class MotionAnalysisPipeline(SceneAnalysisPipeline):
+    """Pipeline for motion analysis that builds upon scene analysis"""
     def __init__(self, config: dict):
-        self.config = config
-        self.logger = logging.getLogger(__name__)
-
+        super().__init__(config)
+        
+        # Motion-specific components
         self.pose_detector = PoseDetector(
             model_path=config['models']['pose_detection'],
             confidence_threshold=config['detection']['confidence_threshold']
         )
-
         self.movement_tracker = MovementTracker(
             tracking_threshold=config['tracking']['movement_threshold'],
             window_size=config['tracking']['window_size']
         )
-
         self.action_classifier = ActionClassifier(
             model_path=config['models']['action_classification'],
             class_mapping=config['classification']['action_classes']
@@ -79,25 +79,26 @@ class MotionAnalysisPipeline:
 
         self.current_segments: List[MotionSegment] = []
 
-    def analyze_frame(self, frame: np.ndarray, frame_idx: int) -> Dict:
+    def _process_frame(self, frame: np.ndarray, frame_idx: int, prev_frame: Optional[np.ndarray]) -> Dict:
+        """Override frame processing to add motion analysis"""
+        # Get base scene analysis results
+        base_result = super()._process_frame(frame, frame_idx, prev_frame)
+        
+        # Add motion analysis
         pose_data = self.pose_detector.detect(frame)
         if pose_data is None:
-            return self._create_empty_result(frame_idx)
+            return {**base_result, **self._create_empty_motion_result(frame_idx)}
 
         movement_data = self.movement_tracker.track(pose_data)
         if not movement_data['is_moving']:
-            return self._create_static_result(frame_idx, pose_data)
+            return {**base_result, **self._create_static_motion_result(frame_idx, pose_data)}
 
+        # Perform parallel motion analysis
         futures = []
-        futures.append(self.executor.submit(
-            self.action_classifier.classify, pose_data
-        ))
-        futures.append(self.executor.submit(
-            self.metrics_calculator.compute_metrics, pose_data
-        ))
-        futures.append(self.executor.submit(
-            self.trajectory_analyzer.analyze, pose_data
-        ))
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures.append(executor.submit(self.action_classifier.classify, pose_data))
+            futures.append(executor.submit(self.metrics_calculator.compute_metrics, pose_data))
+            futures.append(executor.submit(self.trajectory_analyzer.analyze, pose_data))
 
         action_result = futures[0].result()
         metrics = futures[1].result()
@@ -105,63 +106,35 @@ class MotionAnalysisPipeline:
 
         self._update_segments(frame_idx, pose_data, action_result, metrics)
 
-        phase_info = self.phase_analyzer.analyze(pose_data)
-        pattern_matches = self.pattern_matcher.find_matches(pose_data)
-        sequence_info = self.sequence_analyzer.analyze(self.current_segments)
-        symmetry_metrics = self.symmetry_analyzer.compute_symmetry(pose_data)
-        tempo_info = self.tempo_analyzer.analyze(pose_data)
-
-        return {
-            'frame_idx': frame_idx,
+        # Additional motion analysis
+        motion_result = {
             'pose_data': pose_data.tolist(),
             'movement': movement_data,
             'action': action_result,
             'metrics': metrics,
-            'phase': phase_info,
-            'patterns': pattern_matches,
-            'sequence': sequence_info,
-            'symmetry': symmetry_metrics,
-            'tempo': tempo_info,
+            'phase': self.phase_analyzer.analyze(pose_data),
+            'patterns': self.pattern_matcher.find_matches(pose_data),
+            'sequence': self.sequence_analyzer.analyze(self.current_segments),
+            'symmetry': self.symmetry_analyzer.compute_symmetry(pose_data),
+            'tempo': self.tempo_analyzer.analyze(pose_data),
             'trajectory': trajectory
         }
 
+        return {**base_result, **motion_result}
+
     def analyze_video(self, video_path: str) -> Dict:
-        self.logger.info(f"Starting motion analysis of {video_path}")
-
-        import cv2
-        cap = cv2.VideoCapture(video_path)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-        all_results = []
-        frame_idx = 0
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            frame_results = self.analyze_frame(frame, frame_idx)
-            all_results.append(frame_results)
-            frame_idx += 1
-
-        cap.release()
-
+        """Override video analysis to include motion-specific results"""
+        # Get base scene analysis results
+        base_results = super().analyze_video(video_path)
+        
+        # Add motion-specific results
         final_segments = self._finalize_segments()
-
-        analysis_summary = {
-            'video_info': {
-                'path': video_path,
-                'frames': frame_count,
-                'fps': fps
-            },
-            'frame_results': all_results,
+        
+        return {
+            **base_results,
             'motion_segments': [self._segment_to_dict(seg) for seg in final_segments],
-            'analysis_parameters': self._get_analysis_parameters()
+            'motion_parameters': self._get_motion_parameters()
         }
-
-        self.logger.info("Motion analysis completed successfully")
-        return analysis_summary
 
     def _create_empty_result(self, frame_idx: int) -> Dict:
         return {
@@ -240,6 +213,16 @@ class MotionAnalysisPipeline:
         }
 
     def _get_analysis_parameters(self) -> Dict:
+        return {
+            'confidence_threshold': self.config['detection']['confidence_threshold'],
+            'movement_threshold': self.config['tracking']['movement_threshold'],
+            'action_threshold': self.config['detection']['action_threshold'],
+            'phase_window': self.config['analysis']['phase_window'],
+            'pattern_similarity': self.config['analysis']['pattern_similarity'],
+            'trajectory_smoothing': self.config['analysis']['trajectory_smoothing']
+        }
+
+    def _get_motion_parameters(self) -> Dict:
         return {
             'confidence_threshold': self.config['detection']['confidence_threshold'],
             'movement_threshold': self.config['tracking']['movement_threshold'],

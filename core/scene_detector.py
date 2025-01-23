@@ -1,4 +1,3 @@
-# scene_detector.py
 import cv2
 import numpy as np
 from typing import List, Tuple, Dict, Optional

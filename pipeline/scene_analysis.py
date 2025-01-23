@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import numpy as np
 
@@ -15,13 +15,13 @@ from utils.video_reader import VideoReader
 from utils.video_reconstructor import VideoReconstructor, GapInfo
 
 
-class SceneAnalysisPipeline:
+class BasePipeline:
+    """Base pipeline class that handles common video processing functionality"""
     def __init__(self, config: dict):
         self.config = config
         self.logger = logging.getLogger(__name__)
-
-        self.scene_detector = SceneDetector(config)
-        self.quality_analyzer = VideoQualityAnalyzer(config)
+        
+        # Common video processing components
         self.frame_manager = VideoFrameManager(
             storage_path=config['output']['storage_path'],
             target_resolution=(
@@ -30,6 +30,31 @@ class SceneAnalysisPipeline:
             ),
             compression_level=config['output']['compression_quality']
         )
+        self.quality_analyzer = VideoQualityAnalyzer(config)
+
+    def _process_video_metadata(self, video_path: str) -> Dict:
+        """Common method to process video metadata"""
+        video_reader = VideoReader(video_path)
+        metadata = video_reader.get_metadata()
+        video_reader.release()
+        return {
+            'frame_count': metadata.total_frames,
+            'fps': metadata.fps,
+            'resolution': (metadata.width, metadata.height)
+        }
+
+    def _get_frame_generator(self, video_path: str):
+        """Common method to generate frames"""
+        return VideoReader(video_path).read_frames()
+
+
+class SceneAnalysisPipeline(BasePipeline):
+    """Pipeline for basic scene analysis"""
+    def __init__(self, config: dict):
+        super().__init__(config)
+        
+        # Scene-specific components
+        self.scene_detector = SceneDetector(config)
         self.reconstructor = VideoReconstructor(config)
         self.lane_detector = LaneDetector(config)
         self.speed_estimator = SpeedEstimator(
@@ -37,26 +62,39 @@ class SceneAnalysisPipeline:
             track_length=config['tracking']['track_length'],
             stability_threshold=config['tracking']['stability_threshold']
         )
-
+        
         self.track_history = []
 
     def analyze_video(self, video_path: str) -> Dict:
-        self.logger.info(f"Starting analysis of {video_path}")
-        video_reader = VideoReader(video_path)
-        sequence_name = Path(video_path).stem
-
-        self.speed_estimator.calibrate(video_reader.width)
-
+        """Main analysis method that other pipelines can extend"""
+        self.logger.info(f"Starting scene analysis of {video_path}")
+        
+        # Get basic video info
+        metadata = self._process_video_metadata(video_path)
+        
+        # Initialize analysis results
+        scene_changes = []
         quality_metrics = []
-        scene_changes: List[SceneChange] = []
         gaps_to_reconstruct = []
         lane_detections = []
         speed_measurements = []
         prev_frame = None
 
-        for frame_idx, frame in enumerate(video_reader.read_frames()):
-            self.frame_manager.save_frame(sequence_name, frame_idx, frame)
+        self.speed_estimator.calibrate(self.frame_manager.width)
 
+        # Process frames
+        for frame_idx, frame in enumerate(self._get_frame_generator(video_path)):
+            # Basic frame processing that other pipelines might need
+            frame_result = self._process_frame(frame, frame_idx, prev_frame)
+            
+            # Scene-specific processing
+            scene_result = self._process_scene(frame, frame_idx, prev_frame)
+            
+            # Combine results
+            quality_metrics.append(frame_result['quality_metrics'])
+            if scene_result.get('scene_change'):
+                scene_changes.append(scene_result['scene_change'])
+            
             lane_info = self.lane_detector.detect(frame)
             if lane_info:
                 lane_detections.append({
@@ -67,16 +105,7 @@ class SceneAnalysisPipeline:
                     'curvature': lane_info.curvature
                 })
 
-            frame_metrics = self.quality_analyzer.compute_frame_metrics(frame)
-            self.quality_analyzer.update_metrics_history(frame_idx, frame_metrics)
-            quality_metrics.append(frame_metrics)
-
-            if prev_frame is not None:
-                scene_change = self.scene_detector.detect_scene_change(prev_frame, frame)
-                if scene_change:
-                    scene_changes.append(scene_change)
-
-            if self._needs_reconstruction(frame_metrics):
+            if self._needs_reconstruction(frame_result['quality_metrics']):
                 gaps_to_reconstruct.append(self._create_gap_info(
                     frame_idx, frame, quality_metrics
                 ))
@@ -101,11 +130,11 @@ class SceneAnalysisPipeline:
 
             prev_frame = frame.copy()
 
-        metadata = video_reader.get_metadata()
+        metadata = self._process_video_metadata(video_path)
 
         reconstructed_segments = {}
         if gaps_to_reconstruct:
-            video_segments = self._get_video_segments(sequence_name, scene_changes)
+            video_segments = self._get_video_segments(Path(video_path).stem, scene_changes)
             reconstructed_frames, reconstruction_metadata = self.reconstructor.reconstruct_gaps(
                 video_segments=video_segments,
                 gaps=gaps_to_reconstruct
@@ -123,11 +152,7 @@ class SceneAnalysisPipeline:
         } for sc in scene_changes]
 
         analysis_results = {
-            'video_metadata': {
-                'frame_count': metadata.total_frames,
-                'fps': metadata.fps,
-                'resolution': (metadata.width, metadata.height)
-            },
+            'video_metadata': metadata,
             'scene_changes': scene_changes_dict,
             'quality_metrics': quality_metrics,
             'reconstructed_segments': reconstructed_segments,
@@ -140,9 +165,30 @@ class SceneAnalysisPipeline:
             }
         }
 
-        video_reader.release()
         self.logger.info("Analysis completed successfully")
         return analysis_results
+
+    def _process_frame(self, frame: np.ndarray, frame_idx: int, prev_frame: Optional[np.ndarray]) -> Dict:
+        """Basic frame processing that other pipelines can use"""
+        self.frame_manager.save_frame(Path(video_path).stem, frame_idx, frame)
+        frame_metrics = self.quality_analyzer.compute_frame_metrics(frame)
+        self.quality_analyzer.update_metrics_history(frame_idx, frame_metrics)
+        
+        return {
+            'frame_idx': frame_idx,
+            'quality_metrics': frame_metrics,
+        }
+
+    def _process_scene(self, frame: np.ndarray, frame_idx: int, prev_frame: Optional[np.ndarray]) -> Dict:
+        """Scene-specific processing"""
+        result = {}
+        
+        if prev_frame is not None:
+            scene_change = self.scene_detector.detect_scene_change(prev_frame, frame)
+            if scene_change:
+                result['scene_change'] = scene_change
+        
+        return result
 
     def _needs_reconstruction(self, metrics: Dict[str, float]) -> bool:
         thresholds = self.config['video_processing']['quality_check']

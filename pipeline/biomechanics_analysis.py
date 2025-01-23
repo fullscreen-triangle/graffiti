@@ -17,6 +17,7 @@ from ..biomechanics.sync_analyzer import SynchronizationAnalyzer
 from ..core.athlete_detection import AthleteDetector
 from ..core.human_detector import HumanDetector
 from ..core.skeleton import SkeletonDrawer
+from .motion_analysis import MotionAnalysisPipeline
 
 
 @dataclass
@@ -83,14 +84,12 @@ class AthleteTracker:
         return intersection_area / union_area
 
 
-class BiomechanicsAnalysisPipeline:
+class BiomechanicsAnalysisPipeline(MotionAnalysisPipeline):
+    """Pipeline for biomechanical analysis that builds upon motion analysis"""
     def __init__(self, config: dict):
-        self.config = config
-        self.logger = logging.getLogger(__name__)
-
-        self.human_detector = HumanDetector(
-            confidence_threshold=config['detection']['confidence_threshold']
-        )
+        super().__init__(config)
+        
+        # Biomechanics-specific components
         self.athlete_detector = AthleteDetector()
         self.athlete_tracker = AthleteTracker(
             max_athletes=config['tracking']['max_athletes'],
@@ -114,32 +113,45 @@ class BiomechanicsAnalysisPipeline:
         self.max_workers = config['processing']['max_workers']
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
 
-    def process_frame(self, frame: np.ndarray, frame_idx: int) -> Dict:
+    def _process_frame(self, frame: np.ndarray, frame_idx: int, prev_frame: Optional[np.ndarray]) -> Dict:
+        """Override frame processing to add biomechanical analysis"""
+        # Get base motion analysis results
+        base_result = super()._process_frame(frame, frame_idx, prev_frame)
+        
+        # Add biomechanical analysis
         detections = self.human_detector.detect(frame)
         athlete_data = self.athlete_detector.identify_athletes(detections)
         tracked_athletes = self.athlete_tracker.update(athlete_data)
 
-        results = []
-        futures = []
-
-        for athlete in tracked_athletes:
-            future = self.executor.submit(
-                self._analyze_athlete,
-                frame=frame,
-                athlete_data=athlete,
-                frame_idx=frame_idx
-            )
-            futures.append(future)
-
-        for future in futures:
-            result = future.result()
-            if result:
-                results.append(result)
+        biomech_results = []
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [
+                executor.submit(self._analyze_athlete, frame, athlete, frame_idx)
+                for athlete in tracked_athletes
+            ]
+            for future in futures:
+                result = future.result()
+                if result:
+                    biomech_results.append(result)
 
         return {
-            'frame_idx': frame_idx,
-            'athletes': results,
-            'total_detected': len(results)
+            **base_result,
+            'athletes': biomech_results,
+            'total_detected': len(biomech_results)
+        }
+
+    def analyze_video(self, video_path: str) -> Dict:
+        """Override video analysis to include biomechanics-specific results"""
+        # Get base motion analysis results
+        base_results = super().analyze_video(video_path)
+        
+        return {
+            **base_results,
+            'biomechanics_parameters': {
+                'max_athletes': self.config['tracking']['max_athletes'],
+                'confidence_threshold': self.config['detection']['confidence_threshold'],
+                'iou_threshold': self.config['tracking']['iou_threshold']
+            }
         }
 
     def _analyze_athlete(self, frame: np.ndarray, athlete_data: Dict, frame_idx: int) -> Optional[Dict]:
@@ -168,41 +180,3 @@ class BiomechanicsAnalysisPipeline:
             'synchronization': sync_metrics,
             'mannequin': mannequin
         }
-
-    def analyze_video(self, video_path: str) -> Dict:
-        self.logger.info(f"Starting biomechanical analysis of {video_path}")
-
-        cap = cv2.VideoCapture(video_path)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-        all_results = []
-        frame_idx = 0
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            frame_results = self.process_frame(frame, frame_idx)
-            all_results.append(frame_results)
-            frame_idx += 1
-
-        cap.release()
-
-        analysis_summary = {
-            'video_info': {
-                'path': video_path,
-                'frames': frame_count,
-                'fps': fps
-            },
-            'frame_results': all_results,
-            'analysis_parameters': {
-                'max_athletes': self.config['tracking']['max_athletes'],
-                'confidence_threshold': self.config['detection']['confidence_threshold'],
-                'iou_threshold': self.config['tracking']['iou_threshold']
-            }
-        }
-
-        self.logger.info("Biomechanical analysis completed successfully")
-        return analysis_summary

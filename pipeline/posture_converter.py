@@ -18,6 +18,27 @@ class MannequinConversionPipeline:
         self.logger = self._setup_logger()
         self._init_joint_mapping()
 
+        # Mannequin.js specific configuration
+        self.mannequin_config = {
+            "version": 7,  # mannequin.js version
+            "joints": [
+                "root",      # 0: base position
+                "rotation",  # 1: base rotation
+                "l_leg",    # 2: left hip
+                "r_leg",    # 3: right hip
+                "l_knee",   # 4: left knee
+                "r_knee",   # 5: right knee
+                "l_ankle",  # 6: left ankle
+                "r_ankle",  # 7: right ankle
+                "l_arm",    # 8: left shoulder
+                "r_arm",    # 9: right shoulder
+                "l_elbow",  # 10: left elbow
+                "r_elbow",  # 11: right elbow
+                "l_wrist",  # 12: left wrist
+                "r_wrist"   # 13: right wrist
+            ]
+        }
+
     def _load_default_config(self) -> Dict:
         return {
             'max_workers': mp.cpu_count(),
@@ -145,24 +166,42 @@ class MannequinConversionPipeline:
 
     def _create_mannequin_data(self, skeleton: Dict) -> Dict:
         """Create mannequin.js formatted joint data"""
-        mannequin_data = []
+        # Base position (root)
+        position = skeleton.get('position', [0, 0, 0])
+        
+        # Base rotation (usually facing forward)
+        rotation = skeleton.get('rotation', [0, -90, 0])
+        
+        # Initialize joint angles array
+        joint_angles = [
+            position,  # 0: root position
+            rotation,  # 1: base rotation
+            [0, 0, 0],  # 2: l_leg
+            [0, 0, 0],  # 3: r_leg
+            [0, 0, 0],  # 4: l_knee
+            [0, 0, 0],  # 5: r_knee
+            [0, 0, 0],  # 6: l_ankle
+            [0, 0, 0],  # 7: r_ankle
+            [0, 0, 0],  # 8: l_arm
+            [0, 0, 0],  # 9: r_arm
+            [0, 0, 0],  # 10: l_elbow
+            [0, 0, 0],  # 11: r_elbow
+            [0, 0, 0],  # 12: l_wrist
+            [0, 0, 0]   # 13: r_wrist
+        ]
 
-        # Base position and rotation
-        mannequin_data.append(skeleton.get('position', [0, 0, 0]))
-        mannequin_data.append(skeleton.get('rotation', [0, -90, 0]))
-
-        # Process joint angles
+        # Fill in joint angles from skeleton data
         angles = skeleton.get('angles', {})
         for joint_name, mapping in self.joint_mapping.items():
-            angle_data = self._process_joint_angles(
+            joint_index = self.mannequin_config['joints'].index(mapping['mannequin_name'])
+            joint_angles[joint_index] = self._process_joint_angles(
                 angles.get(joint_name, {}),
                 mapping['axis_order']
             )
-            mannequin_data.append(angle_data)
 
         return {
-            "version": 7,
-            "data": mannequin_data
+            "version": self.mannequin_config['version'],
+            "data": joint_angles
         }
 
     def _process_joint_angles(self,
@@ -189,6 +228,24 @@ class MannequinConversionPipeline:
 
         with open(output_path, 'w') as f:
             json.dump(results, f, indent=2 if not self.config['compression'] else None)
+
+    def save_for_viewer(self, frames: List[Dict], output_path: str):
+        """Save frames in a format ready for the web viewer"""
+        viewer_data = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "version": str(self.mannequin_config['version']),
+                "frame_count": len(frames),
+                "joint_config": self.mannequin_config['joints']
+            },
+            "frames": frames
+        }
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            json.dump(viewer_data, f, indent=2 if not self.config['compression'] else None)
 
 
 # Example usage
