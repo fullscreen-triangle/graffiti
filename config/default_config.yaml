@@ -1,6 +1,6 @@
 # athletic_metrics/config/default_config.yaml
 video_processing:
-  storage_path: "data/processed"
+  storage_path: "output/"
   target_resolution: [640, 480]
   compression_level: 7
   frame_step: 1

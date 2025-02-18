@@ -37,7 +37,7 @@ analysis:
   acceleration_threshold: 1.0
 
 output:
-  storage_path: "data/athletics/"
+  storage_path: "output/"
   visualization:
     draw_bbox: true
     draw_skeleton: true

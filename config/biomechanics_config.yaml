@@ -83,7 +83,7 @@ visualization:
 # Output settings
 output:
   save_results: true
-  output_dir: "results/"
+  output_dir: "output/"
   format: "csv"  # or "json"
   video:
     save_video: true

@@ -1,5 +1,8 @@
 # Graffitti
 
+[![Python Version](https://img.shields.io/pypi/pyversions/science-platform.svg)](https://pypi.org/project/science-platform/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 A comprehensive framework for human motion analysis, biomechanical assessment, and sport-specific performance evaluation.
 
 ## Abstract

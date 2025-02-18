@@ -1,126 +1,88 @@
-# Core Configuration
-models:
-  pose_detection: "models/pose_detection_v2.pth"
-  action_classification: "models/action_classifier_v1.pth"
-  pattern_templates: "models/movement_patterns.json"
-  scene_detection: "models/scene_detector_v1.pth"
+# athletic_metrics/config/default_config.yaml
 
-# Video Processing Parameters
+# Video processing settings
 video_processing:
   fps: 30
+  max_workers: 4
   resize_width: 1280
   resize_height: 720
-  max_workers: 4
-  batch_size: 16
-  use_gpu: true
-  precision: "float32"
+  quality_check:
+    min_brightness: 0.2
+    max_brightness: 0.8
+    min_contrast: 0.4
+    blur_threshold: 100
 
-# Detection Parameters
+# Model paths
+models:
+  pose_detection: "models/pose_detection.pth"
+  action_classification: "models/action_classification.pth"
+  pattern_templates: "models/pattern_templates.json"
+
+# Detection settings
 detection:
-  confidence_threshold: 0.65
-  action_threshold: 0.75
-  nms_threshold: 0.45
-  min_detection_size: [64, 64]
-  max_detection_size: [960, 960]
-  scale_factor: 1.2
-
-# Tracking Parameters
-tracking:
-  max_athletes: 4
+  confidence_threshold: 0.5
+  action_threshold: 0.7
   iou_threshold: 0.5
-  movement_threshold: 0.15
-  window_size: 15
-  track_length: 30
-  stability_threshold: 0.2
-  kalman_process_noise: 0.03
-  kalman_measurement_noise: 0.1
 
-# Analysis Parameters
+# Tracking settings
+tracking:
+  max_athletes: 5
+  movement_threshold: 0.1
+  window_size: 15
+  iou_threshold: 0.5
+  track_length: 30
+  min_hits: 3
+  max_age: 50
+  track_timeout: 10
+  min_track_length: 5
+
+# Classification settings
+classification:
+  action_classes: {
+    0: "running",
+    1: "walking",
+    2: "jumping",
+    3: "standing"
+  }
+
+# Analysis settings
 analysis:
-  # Phase Analysis
   phase_window: 30
   phase_overlap: 0.5
-  min_phase_duration: 10
-
-  # Pattern Analysis
   pattern_similarity: 0.8
-  min_sequence_length: 5
-  max_temporal_gap: 3
-
-  # Motion Analysis
+  min_sequence_length: 10
+  symmetry_points: ["shoulders", "hips", "knees", "ankles"]
   trajectory_smoothing: 5
-  velocity_threshold: 0.5
-  acceleration_threshold: 1.0
-
-  # Stability Analysis
   stability_window: 30
-  com_threshold: 0.1
-  balance_threshold: 0.15
-
-  # Symmetry Analysis
-  symmetry_points: ["shoulder", "hip", "knee", "ankle"]
-  symmetry_threshold: 0.85
-
-  # Sync Analysis
   sync_window: 30
-  sync_threshold: 0.7
 
-  # Biomechanics
-  grf_estimation_method: "neural"
-  joint_angle_smoothing: 5
-  force_plate_calibration: 1000
-  moment_calculation: "inverse_dynamics"
+# Mannequin conversion settings
+mannequin:
+  max_workers: 4
+  chunk_size: 500
+  use_threading: false
+  output_format: "json"
+  compression: false
+  validation: true
+  error_handling: "skip"
+  output_directory: "output/mannequin"
 
-# Output Configuration
+# Output settings
 output:
-  storage_path: "data/processed/"
+  storage_path: "output/frames"
   compression_quality: 95
-  save_intermediate: false
-  export_format: "json"
-  video_codec: "h264"
-  frame_format: "jpg"
-  metrics_precision: 4
+  plots_directory: "output/plots"
 
-  visualization:
-    draw_bbox: true
-    draw_skeleton: true
-    draw_trajectories: true
-    draw_phases: true
-    color_scheme:
-      athlete: [0, 255, 0]
-      skeleton: [255, 255, 0]
-      trajectory: [0, 0, 255]
-      phase_a: [255, 0, 0]
-      phase_b: [0, 255, 0]
-      phase_c: [0, 0, 255]
+athlete_detection:
+  enabled: true
+  method: "hog"  # or other methods when implemented
+  detail_level: "GROUND"  # BASIC, POSITION, GROUND, or DETAILED
+  confidence_threshold: 0.3
+  tracking_threshold: 50
+  grass_detection:
+    enabled: true
+    hsv_lower: [35, 30, 30]
+    hsv_upper: [85, 255, 255]
 
-# Logging Configuration
-logging:
-  level: "INFO"
-  file: "logs/analysis.log"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  max_size: 10485760  # 10MB
-  backup_count: 5
-
-# Performance Optimization
-optimization:
-  cache_size: 1024
-  prefetch_frames: 32
-  thread_pool_size: 4
-  gpu_memory_fraction: 0.8
-  enable_tensorrt: false
-  quantization: false
-
-# Error Handling
-error_handling:
-  max_retries: 3
-  retry_delay: 1.0
-  skip_failed_frames: true
-  fallback_mode: "cpu"
-
-# System Requirements
-system:
-  min_memory: 8589934592  # 8GB in bytes
-  min_gpu_memory: 4294967296  # 4GB in bytes
-  required_extensions: ["cuda", "mkl", "opencv"]
-  temp_directory: "/tmp/analysis"
+scene_detection:
+  hist_threshold: 0.5

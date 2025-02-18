@@ -28,7 +28,7 @@ analysis:
   window_size: 15
 
 output:
-  storage_path: "data/stabilography/"
+  storage_path: "output/"
   export_format: "json"
   metrics_precision: 4
   visualization:

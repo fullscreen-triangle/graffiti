@@ -7,17 +7,16 @@ from typing import Dict, List, Tuple, Optional
 import cv2
 import numpy as np
 
-from ..biomechanics.dynamics_analyzer import DynamicsAnalyzer
-from ..biomechanics.grf_analyzer import GRFAnalyzer
-from ..biomechanics.kinematics_analyzer import KinematicsAnalyzer
-from ..biomechanics.posture_converter import MannequinConverter
-from ..biomechanics.stability_analyzer import StabilityAnalyzer
-from ..biomechanics.stride_analyzer import StrideAnalyzer
-from ..biomechanics.sync_analyzer import SynchronizationAnalyzer
-from ..core.athlete_detection import AthleteDetector
-from ..core.human_detector import HumanDetector
-from ..core.skeleton import SkeletonDrawer
-from .motion_analysis import MotionAnalysisPipeline
+from biomechanics.dynamics_analyzer import DynamicsAnalyzer
+from biomechanics.grf_analyzer import GRFAnalyzer
+from biomechanics.kinematics_analyzer import KinematicsAnalyzer
+from biomechanics.posture_converter import MannequinConverter
+from biomechanics.stability_analyzer import StabilityAnalyzer
+from biomechanics.stride_analyzer import StrideAnalyzer
+from biomechanics.sync_analyzer import SynchronizationAnalyzer
+from core.athlete_detection import AthleteDetector
+from core.skeleton import SkeletonDrawer
+from pipeline.motion_analysis import MotionAnalysisPipeline
 
 
 @dataclass

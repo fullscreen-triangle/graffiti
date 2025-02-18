@@ -5,17 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from .scene_analysis import SceneAnalysisPipeline
-from ..core.pose_detector import PoseDetector
-from ..core.movement_tracker import MovementTracker
-from ..motion.motion_classifier import ActionClassifier
-from ..motion.motion_classifier import MotionMetricsCalculator
-from ..motion.motion_classifier import PhaseAnalyzer
-from ..motion.motion_classifier import PatternMatcher
-from ..motion.motion_classifier import SequenceAnalyzer
-from ..motion.motion_classifier import SymmetryAnalyzer
-from ..motion.motion_classifier import TempoAnalyzer
-from ..motion.motion_classifier import TrajectoryAnalyzer
+from core.movement_tracker import MovementTracker
+from core.pose_detector import PoseDetector
+from motion.motion_classifier import ActionClassifier, MotionMetricsCalculator, PhaseAnalyzer, PatternMatcher, \
+    SequenceAnalyzer, SymmetryAnalyzer, TempoAnalyzer, TrajectoryAnalyzer
+from pipeline.scene_analysis import SceneAnalysisPipeline
 
 
 @dataclass
