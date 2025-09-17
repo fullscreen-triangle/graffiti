@@ -1,0 +1,111 @@
+# Graffiti Search Configuration
+# Copy this file to config.toml and modify as needed
+
+[server]
+port = 8080
+host = "0.0.0.0"
+environment = "development"
+
+[logging]
+level = "info"
+format = "json"
+enable_file_logging = true
+log_directory = "./logs"
+
+[environmental]
+precision = 1e-6
+measurement_interval_ms = 100
+twelve_dimensional_mode = true
+calibration_interval_hours = 24
+sensor_timeout_ms = 5000
+
+[atmospheric]
+workers = "auto"
+processing_mode = "distributed"
+target_molecular_processors = 1000000000
+consensus_threshold = 0.667
+network_timeout_ms = 10000
+molecular_oscillation_sync = true
+
+[temporal]
+precision = 1e-30
+coordination_mode = "precision-by-difference"
+fragment_coherence_window_ms = 100
+safety_margin_us = 10
+processing_buffer_ms = 1
+max_fragments_per_message = 1000
+
+[s_entropy]
+mode = "strategic"
+impossibility_threshold = "infinity"
+alpha_weight = 1.0
+beta_weight = 2.0
+gamma_weight = 1.414
+lambda_12 = 0.1
+lambda_13 = 0.15
+lambda_23 = 0.2
+
+[bmd]
+mode = "frame-selection"
+memory_frame_cache_gb = 10
+max_frames_per_query = 100
+selection_temperature = 1.0
+selection_decay_factor = 0.99
+frame_cache_ttl_hours = 1
+
+[molecular]
+processing_mode = "thermodynamic"
+n2_frequency_hz = 2.36e14
+o2_frequency_hz = 4.74e14
+h2o_frequency_range = [1e11, 1e12]
+temperature_optimization = true
+
+[perturbation]
+validation_depth = "comprehensive"
+stability_threshold = 0.8
+intensity = "moderate"
+word_removal_tests = 10
+rearrangement_tests = 5
+substitution_tests = 8
+
+[database]
+url = "postgresql://graffiti:graffiti@localhost:5432/graffiti"
+max_connections = 100
+connection_timeout_ms = 5000
+query_timeout_ms = 30000
+
+[cache]
+redis_url = "redis://localhost:6379"
+default_ttl_seconds = 300
+max_size_mb = 512
+eviction_threshold = 0.8
+
+[performance]
+max_concurrent_queries = 1000
+max_memory_usage_mb = 2048
+target_response_time_ms = 100
+zero_latency_threshold_ms = 10
+cpu_usage_limit_percent = 80.0
+
+[monitoring]
+enabled = true
+metrics_port = 9090
+health_check_interval_seconds = 30
+prometheus_enabled = true
+grafana_enabled = true
+
+[security]
+api_key_required = false
+rate_limit_requests_per_minute = 100
+burst_limit = 20
+cors_enabled = true
+allowed_origins = ["*"]
+
+[development]
+mode = true
+hot_reload = true
+debug_environmental = false
+debug_atmospheric = false
+debug_temporal = false
+debug_s_entropy = false
+mock_sensors = false

@@ -1,0 +1,13 @@
+[package]
+name = "graffiti-bmd"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@wzw.tum.de>"]
+description = "Biological Maxwell Demon processing system for frame selection"
+license = "MIT"
+
+[dependencies]
+graffiti-core = { path = "../core" }
+serde = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }

@@ -1,0 +1,35 @@
+[package]
+name = "graffiti-web"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@wzw.tum.de>"]
+description = "Web interface for Graffiti Search revolutionary search engine"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+graffiti-core = { path = "../core" }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys = { workspace = true }
+web-sys = { workspace = true }
+yew = { workspace = true }
+gloo = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+console_error_panic_hook = { workspace = true }
+wee_alloc = { workspace = true }
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Window",
+  "Location",
+  "History",
+]

@@ -1,0 +1,12 @@
+[package]
+name = "graffiti-molecular"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@wzw.tum.de>"]
+description = "Gas molecular information dynamics processor"
+license = "MIT"
+
+[dependencies]
+graffiti-core = { path = "../core" }
+serde = { workspace = true }
+tokio = { workspace = true }

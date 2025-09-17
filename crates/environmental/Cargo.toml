@@ -1,0 +1,43 @@
+[package]
+name = "graffiti-environmental"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@wzw.tum.de>"]
+description = "Twelve-dimensional environmental measurement system for Graffiti Search"
+license = "MIT"
+keywords = ["environmental", "measurement", "sensors", "atmospheric"]
+
+[dependencies]
+# Core graffiti types
+graffiti-core = { path = "../core" }
+
+# Core dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Math and algorithms  
+nalgebra = { workspace = true }
+ndarray = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+approx = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# Performance
+dashmap = { workspace = true }
+parking_lot = { workspace = true }
+once_cell = { workspace = true }
+
+# Networking
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+proptest = { workspace = true }

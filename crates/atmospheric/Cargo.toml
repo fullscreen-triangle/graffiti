@@ -1,0 +1,17 @@
+[package]
+name = "graffiti-atmospheric"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@wzw.tum.de>"]
+description = "Atmospheric molecular processing network using Earth's 10^44 molecules"
+license = "MIT"
+keywords = ["atmospheric", "molecular", "processing", "distributed"]
+
+[dependencies]
+graffiti-core = { path = "../core" }
+serde = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }

@@ -1,0 +1,17 @@
+[package]
+name = "graffiti-s-entropy"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@wzw.tum.de>"]
+description = "S-entropy strategic impossibility optimization system"
+license = "MIT"
+keywords = ["s-entropy", "impossibility", "strategic", "optimization"]
+
+[dependencies]
+graffiti-core = { path = "../core" }
+serde = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
