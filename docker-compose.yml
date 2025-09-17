@@ -1,0 +1,349 @@
+version: '3.8'
+
+services:
+  # Main search engine service
+  graffiti-search:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+      - GRAFFITI_PORT=8080
+      - GRAFFITI_HOST=0.0.0.0
+      - DATABASE_URL=postgresql://graffiti:graffiti@postgres:5432/graffiti
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+      - atmospheric-worker
+      - environmental-sensor
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Web interface server
+  web-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-server
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro
+    depends_on:
+      - graffiti-search
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Atmospheric molecular processing worker
+  atmospheric-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: atmospheric-worker
+    environment:
+      - RUST_LOG=info
+      - ATMOSPHERIC_WORKERS=auto
+      - MOLECULAR_PROCESSING_MODE=distributed
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data/atmospheric:/app/data/atmospheric
+      - ./logs/atmospheric:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # Environmental twelve-dimensional measurement sensor
+  environmental-sensor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: environmental-sensor
+    environment:
+      - RUST_LOG=info
+      - SENSOR_POLLING_INTERVAL=100ms
+      - TWELVE_DIMENSIONAL_MODE=true
+      - REDIS_URL=redis://redis:6379
+    privileged: true  # Needed for hardware sensor access
+    devices:
+      - /dev/i2c-1:/dev/i2c-1
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    depends_on:
+      - redis
+    volumes:
+      - ./data/environmental:/app/data/environmental
+      - ./logs/environmental:/app/logs
+      - /sys:/sys:ro
+      - /dev:/dev
+    restart: unless-stopped
+
+  # Quantum state measurement processor
+  quantum-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: quantum-processor
+    environment:
+      - RUST_LOG=info
+      - QUANTUM_BACKEND=simulator
+      - COHERENCE_TIME_THRESHOLD=100us
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data/quantum:/app/data/quantum
+      - ./logs/quantum:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+
+  # S-entropy strategic impossibility optimizer
+  s-entropy-optimizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["./graffiti-s-entropy", "--optimizer"]
+    environment:
+      - RUST_LOG=info
+      - S_ENTROPY_MODE=strategic
+      - IMPOSSIBILITY_THRESHOLD=infinity
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data/s-entropy:/app/data/s-entropy
+      - ./logs/s-entropy:/app/logs
+    restart: unless-stopped
+
+  # Temporal coordination service (Sango Rine Shumba)
+  temporal-coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["./graffiti-temporal", "--coordinator"]
+    environment:
+      - RUST_LOG=info
+      - TEMPORAL_PRECISION=1e-30
+      - COORDINATION_MODE=precision-by-difference
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data/temporal:/app/data/temporal
+      - ./logs/temporal:/app/logs
+    restart: unless-stopped
+
+  # BMD (Biological Maxwell Demon) processor
+  bmd-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["./graffiti-bmd", "--processor"]
+    environment:
+      - RUST_LOG=info
+      - BMD_MODE=frame-selection
+      - MEMORY_FRAME_CACHE=10GB
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data/bmd:/app/data/bmd
+      - ./logs/bmd:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+        reservations:
+          memory: 6G
+
+  # Perturbation validation service
+  perturbation-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ["./graffiti-perturbation", "--validator"]
+    environment:
+      - RUST_LOG=info
+      - VALIDATION_DEPTH=comprehensive
+      - STABILITY_THRESHOLD=0.8
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data/perturbation:/app/data/perturbation
+      - ./logs/perturbation:/app/logs
+    restart: unless-stopped
+
+  # PostgreSQL database for persistent storage
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=graffiti
+      - POSTGRES_USER=graffiti
+      - POSTGRES_PASSWORD=graffiti
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graffiti"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for caching and inter-service communication
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring and observability
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=graffiti
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Log aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Development override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+---
+version: '3.8'
+services:
+  graffiti-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      - RUST_LOG=debug
+      - GRAFFITI_ENV=development
+    volumes:
+      - .:/app
+      - /app/target
+    working_dir: /app
+    command: ["cargo", "watch", "-x", "run"]
+
+  # Development web server with hot reload
+  web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./crates/web:/app/crates/web
+    working_dir: /app/crates/web
+    command: ["trunk", "serve", "--address", "0.0.0.0"]

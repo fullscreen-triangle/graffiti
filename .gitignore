@@ -1,0 +1,130 @@
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# WebAssembly
+pkg/
+wasm-pack.log
+*.wasm
+*.js.map
+
+# IDEs
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Build artifacts
+/dist/
+/build/
+/public/build/
+/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Testing
+/coverage/
+*.lcov
+
+# Documentation build
+/book/
+/mdbook/
+
+# Benchmarking results
+/target/criterion/
+
+# Profiling
+*.prof
+perf.data*
+
+# Local development
+/local/
+/scratch/
+/experiments/
+
+# Atmospheric measurement data (can be large)
+/data/atmospheric/*.bin
+/data/environmental/*.dat
+
+# Molecular simulation outputs
+/simulations/output/
+*.mol
+*.xyz
+
+# Quantum state files
+/quantum/*.state
+/entanglement/*.dat
+
+# Temporal coordination logs
+/temporal/*.timeline
+/coordination/*.sync
+
+# S-entropy calculation caches
+/s-entropy/*.cache
+/strategic/*.impossibility
+
+# BMD frame databases (auto-generated)
+/bmd/frames/*.db
+/memory/*.frames
+
+# Perturbation test results
+/perturbation/results/
+/validation/*.test
+
+# Web deployment
+/web/static/js/
+/web/static/css/
+/web/static/wasm/
+/cdn/
+*.bundle.js
+
+# Secrets and keys
+*.key
+*.pem
+*.crt
+secrets.toml
+keys.json
+
+# Performance monitoring
+*.perf
+*.flamegraph
+*.cpuprofile
