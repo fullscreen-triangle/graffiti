@@ -9,6 +9,11 @@ pub mod traits;
 pub mod error;
 pub mod constants;
 
+// Revolutionary algorithm integrations
+pub mod honjo_integration;
+pub mod self_aware_integration;  
+pub mod kinshasa_integration;
+
 // Re-export core types for convenience
 pub use types::*;
 pub use traits::*;

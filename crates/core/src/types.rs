@@ -44,6 +44,31 @@ pub struct EnvironmentalState {
     pub visual: VisualDimension,
 }
 
+impl EnvironmentalState {
+    /// Calculate the uniqueness of this environmental state
+    pub fn calculate_uniqueness(&self) -> f64 {
+        // Calculate uniqueness based on the twelve-dimensional environmental vector
+        let dimensions = vec![
+            self.biometric.physiological_arousal * self.biometric.cognitive_load,
+            self.spatial.gravitational_field / 9.81, // Normalize to Earth gravity
+            self.atmospheric.molecular_density.n2_density + self.atmospheric.molecular_density.o2_density,
+            self.cosmic.solar_activity * self.cosmic.cosmic_radiation,
+            self.temporal.precision_by_difference,
+            self.hydrodynamic.local_humidity / 100.0,
+            self.geological.seismic_activity * self.geological.tectonic_stress,
+            self.quantum.quantum_coherence * self.quantum.entanglement_density,
+            self.computational.processing_load * (1.0 - self.computational.network_latency),
+            self.acoustic.ambient_noise_level / 120.0, // Normalize to max dB
+            self.ultrasonic.ultrasonic_reflectivity * self.ultrasonic.material_density / 10000.0,
+            self.visual.illuminance / 100000.0, // Normalize to high illuminance
+        ];
+
+        // Calculate geometric mean for conservative uniqueness estimation
+        let product: f64 = dimensions.iter().map(|&x| x.abs().max(0.001)).product();
+        product.powf(1.0 / dimensions.len() as f64)
+    }
+}
+
 /// Biometric environmental state detection
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BiometricDimension {
@@ -293,15 +318,12 @@ pub struct BMDFrame {
 /// Complete proof constructed through environmental measurement
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Proof {
-    pub id: Uuid,
-    pub query: String,
-    pub environmental_signature: EnvironmentalState,
-    pub construction_method: ConstructionMethod,
-    pub proof_steps: Vec<ProofStep>,
+    pub id: String,
+    pub content: String,
     pub confidence: f64,
-    pub validation_status: ValidationStatus,
-    pub perturbation_stability: f64,
-    pub created_at: SystemTime,
+    pub environmental_context: EnvironmentalState,
+    pub proof_type: String,
+    pub construction_method: String,
 }
 
 /// Method used to construct the proof
@@ -355,6 +377,103 @@ pub struct UserContext {
     pub preferred_proof_style: ProofStyle,
     pub context_preferences: HashMap<String, f64>,
     pub historical_queries: Vec<QueryId>,
+}
+
+impl Default for EnvironmentalState {
+    fn default() -> Self {
+        Self {
+            timestamp: SystemTime::now(),
+            biometric: BiometricDimension {
+                physiological_arousal: 0.5,
+                cognitive_load: 0.5,
+                attention_state: 0.7,
+                emotional_valence: 0.0,
+            },
+            spatial: SpatialDimension {
+                position: Vector3::new(0.0, 0.0, 0.0),
+                gravitational_field: 9.81,
+                magnetic_field: Vector3::new(25.0, 0.0, -45.0),
+                elevation: 0.0,
+            },
+            atmospheric: AtmosphericDimension {
+                pressure: 101325.0,
+                humidity: 50.0,
+                temperature: 293.15,
+                molecular_density: MolecularDensity {
+                    n2_density: 0.78,
+                    o2_density: 0.21,
+                    h2o_density: 0.01,
+                    trace_gases: HashMap::new(),
+                },
+                air_quality_index: 50.0,
+            },
+            cosmic: CosmicDimension {
+                solar_activity: 0.5,
+                cosmic_radiation: 2.0,
+                geomagnetic_activity: 0.3,
+                solar_wind: Vector3::new(400.0, 0.0, 0.0),
+            },
+            temporal: TemporalDimension {
+                circadian_phase: 0.5,
+                seasonal_phase: 0.25,
+                lunar_phase: 0.3,
+                precision_by_difference: 1.0,
+            },
+            hydrodynamic: HydrodynamicDimension {
+                local_humidity: 50.0,
+                water_vapor_pressure: 2000.0,
+                fluid_dynamics: Vector3::new(0.0, 0.0, 0.0),
+                hydrostatic_pressure: 101325.0,
+            },
+            geological: GeologicalDimension {
+                seismic_activity: 0.0,
+                mineral_composition: HashMap::new(),
+                tectonic_stress: 1.0,
+                earth_currents: Vector3::new(0.0, 0.0, 0.0),
+            },
+            quantum: QuantumDimension {
+                quantum_coherence: 0.5,
+                entanglement_density: 0.1,
+                vacuum_fluctuations: 0.1,
+                quantum_noise: 0.05,
+            },
+            computational: ComputationalDimension {
+                processing_load: 0.3,
+                memory_usage: 0.4,
+                network_latency: 0.02,
+                system_entropy: 0.6,
+            },
+            acoustic: AcousticDimension {
+                ambient_noise_level: 40.0,
+                frequency_spectrum: vec![0.2; 5],
+                acoustic_impedance: 415.0,
+                sound_velocity: 343.0,
+            },
+            ultrasonic: UltrasonicDimension {
+                ultrasonic_reflectivity: 0.5,
+                material_density: 1000.0,
+                geometric_features: vec![0.5; 3],
+                distance_measurements: vec![1.0; 4],
+            },
+            visual: VisualDimension {
+                illuminance: 500.0,
+                color_temperature: 5500.0,
+                spectral_composition: vec![0.2; 5],
+                visual_complexity: 0.5,
+            },
+        }
+    }
+}
+
+impl Default for UserContext {
+    fn default() -> Self {
+        Self {
+            expertise_level: ExpertiseLevel::Intermediate,
+            preferred_proof_style: ProofStyle::Rigorous,
+            context_preferences: HashMap::new(),
+            historical_queries: Vec::new(),
+        }
+    }
 }
 
 /// Level of user expertise for proof presentation
@@ -439,4 +558,35 @@ pub struct ResponseMetadata {
     pub s_entropy_navigations: u32,
     pub temporal_fragments_coordinated: u32,
     pub generation_timestamp: SystemTime,
+}
+
+/// Information about molecular processing results  
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MolecularProcessingInfo {
+    pub molecular_consensus: String,
+    pub processing_efficiency: f64,
+    pub atmospheric_participation: u64,
+    pub consensus_strength: f64,
+    pub molecular_configuration: String,
+}
+
+/// Status of a system component
+#[derive(Debug, Clone, PartialEq)]
+pub enum ComponentStatus {
+    Healthy,
+    Degraded { reason: String },
+    Unhealthy { reason: String },
+}
+
+/// Overall health status of the system
+#[derive(Debug, Clone)]
+pub struct HealthStatus {
+    pub overall_status: ComponentStatus,
+    pub environmental_measurement: ComponentStatus,
+    pub atmospheric_processing: ComponentStatus,
+    pub temporal_coordination: ComponentStatus,
+    pub s_entropy_navigation: ComponentStatus,
+    pub bmd_processing: ComponentStatus,
+    pub proof_construction: ComponentStatus,
+    pub perturbation_validation: ComponentStatus,
 }
