@@ -1,0 +1,4 @@
+[console_scripts]
+graffiti-consciousness = graffiti.applications.consciousness_demo:main
+graffiti-demo = graffiti.applications.search_demo:main
+graffiti-environmental = graffiti.applications.environmental_query:main
