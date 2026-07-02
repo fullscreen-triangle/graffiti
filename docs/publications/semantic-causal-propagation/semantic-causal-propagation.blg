@@ -1,0 +1,53 @@
+This is BibTeX, Version 0.99e
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: semantic-causal-propagation.aux
+Reallocating 'name_of_file' (item size: 1) to 9 items.
+The style file: plainnat.bst
+Reallocating 'name_of_file' (item size: 1) to 11 items.
+Database file #1: references.bib
+Warning--empty journal in backus1959
+Warning--empty publisher in fordfulkerson1956
+Warning--empty booktitle in naur1963
+Warning--can't use both volume and number fields in naur1963
+You've used 16 entries,
+            2773 wiz_defined-function locations,
+            697 strings with 7128 characters,
+and the built_in function-call counts, 6700 in all, are:
+= -- 590
+> -- 332
+< -- 15
++ -- 115
+- -- 99
+* -- 508
+:= -- 1044
+add.period$ -- 53
+call.type$ -- 16
+change.case$ -- 74
+chr.to.int$ -- 16
+cite$ -- 36
+duplicate$ -- 341
+empty$ -- 585
+format.name$ -- 125
+if$ -- 1401
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 24
+newline$ -- 93
+num.names$ -- 64
+pop$ -- 168
+preamble$ -- 1
+purify$ -- 64
+quote$ -- 0
+skip$ -- 249
+stack$ -- 0
+substring$ -- 218
+swap$ -- 32
+text.length$ -- 4
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 136
+warning$ -- 4
+while$ -- 66
+width$ -- 0
+write$ -- 225
+(There were 4 warnings)

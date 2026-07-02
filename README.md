@@ -1,387 +1,151 @@
-# Graffiti Search: A Proof-Based Information Retrieval System
+# Graffiti
 
-An information retrieval system that constructs mathematical proofs from environmental state measurements using distributed atmospheric processing, temporal coordination mechanisms, and impossibility-based optimization techniques.
+Graffiti is a search system built on a single structural premise: search and
+recognition are the same operation. To recognise an object is to place a
+percept into a region of meaning by ruling out everything the percept is not;
+to search for an object is to start from a description of what is wanted and
+individuate, from an unbounded medium, a region satisfying that description.
+Both terminate at the same kind of object — a bounded region of claim-space,
+never a single point — and both are subject to the same lower bound on how
+precisely they can resolve their target.
 
-## System Characteristics
+The project has two parts: a formal theory of search as individuation
+(`docs/publications/semantic-causal-propagation`), and a domain-specific
+language, Graffiti (`.grf`), whose single primitive realises that theory as an
+executable script. There is no boundary in the design between search over a
+local machine and search over a remote network — both are, prior to
+individuation, contents of a single undifferentiated medium.
 
-The system exhibits the following operational properties:
+## The theory
 
-- **Environmental Construction**: Information synthesis from real-time environmental measurements without pre-stored data
-- **Distributed Atmospheric Processing**: Utilization of atmospheric molecular networks for computational tasks
-- **Temporal Coordination**: Sub-millisecond response times through differential timing mechanisms
-- **Twelve-Dimensional Measurement**: Environmental state capture across biometric, spatial, atmospheric, and quantum dimensions
-- **Impossibility Optimization**: Navigation of solution spaces through strategic constraint manipulation
-- **Universal Solvability**: Theoretical guarantee of solution existence for well-formed queries
+The formal work lives in
+[`docs/publications/semantic-causal-propagation/semantic-causal-propagation.tex`](docs/publications/semantic-causal-propagation/semantic-causal-propagation.tex),
+a self-contained manuscript. Every object in it is a finite weighted graph or
+a construction on one; no metric space, measure, or probability calculus is
+introduced beyond a derived normalisation. The central results:
 
-## System Architecture
+- **The resolution floor.** A search medium spanning both a local machine and
+  the unbounded remote network is never exhausted by any finite search
+  process. From this single order fact — non-completability, not a
+  cardinality claim — it follows as a theorem that every search carries a
+  strictly positive floor: no search returns an exact point, only a bounded
+  region.
+- **Individuation by negation.** In a medium with no privileged claim, a claim
+  can be fixed only as the complement of what it is not. Recognition
+  (decoding a percept into a claim) and search (projecting a description onto
+  a region of the medium) are proved to be inverse readings of a single
+  relation, not two different procedures pointed at each other.
+- **Representation mobility.** Paraphrases of a fixed claim are equivalent
+  representations under an averaging constraint; switching between them costs
+  no additional search. "Peter", "a Harvard medical student", and a much
+  longer clinical description can individuate the same claim without any of
+  the three being a re-verification of the others.
+- **Path opacity.** A multi-step search trajectory is admissible if and only
+  if it converges on its target; interior steps are otherwise unconstrained
+  and may look arbitrarily unlike the eventual result without invalidating
+  it.
+- **Catalytic composition and coherence.** Independent search steps compose
+  multiplicatively, with a precise law of diminishing returns and a
+  saturation dichotomy. A claim is robustly grounded against a single
+  dissenting source only if it is supported by a strongly connected structure
+  of at least three independent catalysts — never a linear chain, never two.
+- **Closure.** A search is finished when every further available catalyst
+  resolves to a claim-region already reached — a criterion strictly stronger
+  than crossing a confidence threshold, and the correct replacement for it. A
+  search that cannot close terminates by declining rather than by guessing.
 
-### Environmental State Processing
-
-The system operates through four primary computational layers:
-
-```mermaid
-graph TD
-    A[Environmental Measurement Layer] --> B[BMD Processing Layer]
-    B --> C[Atmospheric Computation Layer]
-    C --> D[S-Entropy Navigation Layer]
-    D --> E[Temporal Coordination Layer]
-    E --> F[Solution Synthesis]
-    
-    A1[12-Dimensional Sensors] --> A
-    A2[Real-time State Capture] --> A
-    
-    B1[Frame Selection] --> B
-    B2[Experience Fusion] --> B
-    
-    C1[Molecular Consensus] --> C
-    C2[Distributed Processing] --> C
-    
-    D1[Impossibility Navigation] --> D
-    D2[Strategic Optimization] --> D
-    
-    E1[Precision-by-Difference] --> E
-    E2[Temporal Fragmentation] --> E
-```
-
-#### Environmental Measurement Subsystem
-- **Dimensional Coverage**: Simultaneous measurement across biometric, spatial, atmospheric, cosmic, temporal, hydrodynamic, geological, quantum, computational, acoustic, ultrasonic, and visual dimensions
-- **State Construction**: Real-time synthesis of environmental conditions without persistent storage
-- **Uniqueness Calculation**: Environmental state uniqueness factor computation for proof differentiation
-
-#### Atmospheric Processing Network
-- **Molecular Distribution**: Approximately 10^44 atmospheric molecules utilized as distributed computational elements
-- **Task Allocation**: N₂ molecules process logical structures, O₂ molecules validate evidence chains
-- **Consensus Mechanisms**: Network-wide agreement protocols for proof verification
-- **Quantum Timing**: Molecular oscillation patterns provide temporal synchronization references
-
-#### Temporal Coordination Framework
-- **Differential Timing**: Precision enhancement through coordinate differential measurements
-- **Preemptive Processing**: Query processing initiation before completion of user input
-- **Latency Minimization**: Response delivery optimization through temporal fragmentation
-
-#### S-Entropy Optimization System
-- **Tri-dimensional Navigation**: Movement through S_knowledge, S_time, S_entropy coordinate space
-- **Impossibility Handling**: Strategic combination of locally impossible solution approaches
-- **Constraint Resolution**: Mathematical elimination of infinite terms through weight alternation
-
-## Installation and Configuration
-
-### System Requirements
-
-- Rust toolchain version 1.75 or later with WebAssembly target support
-- Node.js runtime version 18 or later for web development components
-- Docker containerization platform (optional)
-
-### Installation Procedure
+The manuscript gives full proofs, an executable-semantics specification of
+the Graffiti language derived directly from the theory, and a numerical
+validation suite. `docs/publications/semantic-causal-propagation/validation`
+is a self-contained Python implementation of the calculus (an exact
+Edmonds–Karp maximum-flow backend with no external dependency) that checks
+every theorem against constructed instances; `docs/publications/semantic-causal-propagation/figures`
+regenerates the manuscript's eight validation panels directly from that
+suite. Both run to completion in under one second.
 
 ```bash
-# Repository acquisition
-git clone https://github.com/fullscreen-triangle/graffiti.git
-cd graffiti
+# run the full theorem-validation suite (writes JSON results)
+cd docs/publications/semantic-causal-propagation/validation
+python run_all.py
 
-# WebAssembly target installation
-rustup target add wasm32-unknown-unknown
-
-# wasm-pack installation for WebAssembly packaging
-curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-# Project compilation
-make build
-
-# Test suite execution
-make test
-
-# Development server initialization
-make dev
+# regenerate the eight validation figure panels
+cd ../figures
+python run_all.py
 ```
 
-### WebAssembly Compilation
+## Graffiti, the language
 
-```bash
-# WebAssembly compilation
-make wasm
+Graffiti scripts (`.grf`) structure a search as a project rather than a
+single query. The language's sole primitive is `seek`: a mandatory exclusion
+clause (what the result is not), a target claim-region, an optional explicit
+chain of catalysts, and a closure-based termination condition. A project is a
+directed acyclic graph of `seek` bindings, so later steps can narrow using
+the exclusions and results of earlier ones.
 
-# Production-optimized WASM compilation
-make wasm-release
+```text
+project apollo_budget {
+  seek launch_date
+    not{ "secondary summaries without citation" }
+    toward{ launch_date_of("Apollo 11") }
+    until converge
+    yield launch_date
 
-# Local server deployment
-make serve
+  seek budget_overrun
+    not{ "post-hoc estimates without primary-source citation" }
+    toward{ cost_vs_authorization(launch_date) }
+    via{ web_search(budget_overrun)
+           >> local_notes(budget_overrun)
+           >> archive_lookup(budget_overrun) }
+    until converge otherwise decline
+    yield budget_overrun
+
+  goal {
+    claims: [launch_date, budget_overrun]
+    coherence: >= 0.5
+  }
+}
 ```
 
-## System Component Architecture
+Catalysts — the operations a `via` chain composes — are namespace-neutral by
+theorem: a local file scan, a remote API call, and an inference from a
+locally hosted or externally retrieved machine-learned model are
+computationally uniform in the calculus. A runtime orchestrator dispatches
+committed `seek` steps against a registry of such catalysts; nothing in the
+theory or the language special-cases which kind of resource realises a given
+step.
 
-The following diagram illustrates the complete computational pipeline from environmental measurement to solution delivery:
+## Repository layout
 
-```mermaid
-graph TB
-    subgraph ENV ["Environmental Reality Layer"]
-        B1[Biometric] & B2[Spatial] & B3[Atmospheric] & B4[Quantum]
-        B5[Temporal] & B6[Hydrodynamic] & B7[Geological] & B8[Computational]  
-        B9[Acoustic] & B10[Ultrasonic] & B11[Visual] & B12[Cosmic]
-    end
-    
-    subgraph BMD ["BMD Query Processing Layer"]
-        C1[Experience Processing] --> C2[Frame Selection]
-        C2 --> C3[Fusion Engine] --> C4[Sanity Validation]
-    end
-    
-    subgraph ATM ["Atmospheric Molecular Processing Layer"]
-        D1[N₂ Logic Verification] & D2[O₂ Evidence Validation]
-        D3[H₂O Context Coherence] & D4[Trace Gas Edge Cases]
-    end
-    
-    subgraph SENT ["S-Entropy Navigation Layer"] 
-        E1[S_knowledge Dimension] & E2[S_time Dimension]
-        E3[S_entropy Dimension] & E4[Strategic Combination]
-    end
-    
-    subgraph TEMP ["Temporal Coordination Layer"]
-        F1[Preemptive Positioning] & F2[Fragment Coordination]
-        F3[Precision-by-Difference] & F4[Latency Optimization]
-    end
-    
-    subgraph SOL ["Solution Synthesis Layer"]
-        G1[Points as Irreducible Content] & G2[Resolutions as Debate Platforms]
-        G3[Perturbation Validation] & G4[Probabilistic Consensus]
-    end
-    
-    ENV --> BMD --> ATM --> SENT --> TEMP --> SOL
+```
+docs/publications/semantic-causal-propagation/
+  semantic-causal-propagation.tex   the manuscript
+  references.bib
+  validation/                       Python validation suite (14 theorem checks)
+  figures/                          panel-generation scripts and rendered PNGs
+
+crates/                             prior Rust workspace (see note below)
 ```
 
-## Theoretical Framework
+The `crates/` workspace predates the theory above and reflects an earlier
+line of work on environmental measurement and atmospheric processing; it is
+not yet an implementation of the individuation calculus or the Graffiti
+language and should not be read as one. The TypeScript module implementing
+the Graffiti compiler and runtime is the current implementation target and
+is under active discussion.
 
-### Universal Problem-Solving Engine Model
+## Status
 
-The system is based on the theoretical premise that physical reality operates as a continuous computational mechanism that resolves state transitions through a dual computational architecture combining zero-computation navigation and infinite-computation exploration.
-
-### Environmental Information Theory
-
-The theoretical foundation rests on three core principles:
-
-```mermaid
-graph LR
-    A[Environmental Reality] --> B[Information Substrates]
-    B --> C[Real-Time Construction]
-    C --> D[Twelve-Dimensional State Space]
-    D --> A
-    
-    B1[Unlimited Unique Information] --> B
-    C1[No Persistent Storage] --> C
-    D1[Complete State Capture] --> D
-```
-
-- **Substrate Availability**: Environmental conditions provide theoretically unlimited unique information sources
-- **Construction Paradigm**: Information synthesis occurs in real-time without requirement for persistent storage
-- **Dimensional Completeness**: Environmental state measurement across twelve identified dimensional categories
-
-### Biological Maxwell Demon (BMD) Framework
-
-The BMD model provides the theoretical basis for query processing through the following mechanisms:
-
-- **Frame Selection Protocol**: Selection of appropriate mathematical frameworks without semantic content generation
-- **Experience-Frame Fusion**: Combination of environmental input with pre-existing mathematical templates
-- **Meaning-Free Operation**: System functionality that operates without semantic interpretation requirements
-
-### Meta-Knowledge Impossibility Theorem
-
-The system design incorporates the meta-knowledge impossibility theorem, which establishes:
-
-- **Recursive Verification Problem**: Knowledge verification processes generate infinite regress requirements
-- **Environmental Bypass Mechanism**: Environmental construction methodology circumvents verification paradoxes
-- **Systematic Impossibility Optimization**: Operational efficiency achieved through structured impossibility constraints
-
-## Performance Specifications
-
-The system exhibits the following measured and theoretical performance characteristics:
-
-```mermaid
-graph LR
-    subgraph PERF ["Performance Metrics"]
-        A[Latency] --> A1[Sub-millisecond response]
-        B[Storage] --> B1[Zero persistent storage]
-        C[Accuracy] --> C1[Thermodynamic optimization]
-        D[Scalability] --> D1[Environmental bounds]
-        E[Reliability] --> E1[Physical law compliance]
-    end
-```
-
-- **Response Latency**: Approaches theoretical minimum through temporal coordination mechanisms
-- **Storage Requirements**: Zero persistent storage requirement due to environmental construction paradigm
-- **Computational Accuracy**: Thermodynamically optimized through environmental state alignment
-- **System Scalability**: Bounded by environmental information availability
-- **Operational Reliability**: Constrained by physical law compliance and reality's computational mechanisms
-
-## Web Platform Deployment
-
-WebAssembly compilation enables platform-independent web deployment:
-
-```bash
-# Web-targeted compilation
-make web-build
-
-# Content distribution network deployment
-make deploy
-
-# Development server initialization
-make web-dev
-```
-
-## Testing Framework
-
-```bash
-# Complete test suite execution
-make test
-
-# Atmospheric processing subsystem testing
-make test-atmospheric
-
-# Environmental measurement subsystem testing
-make test-environmental
-
-# Perturbation validation testing
-make test-perturbation
-
-# Performance benchmark execution
-make bench
-```
-
-## Performance Benchmarking
-
-Quantitative performance assessment for computational subsystems:
-
-```bash
-# Atmospheric processing subsystem benchmarking
-cargo bench --bench atmospheric_processing
-
-# Environmental measurement subsystem benchmarking
-cargo bench --bench environmental_measurement
-
-# Mathematical proof construction benchmarking
-cargo bench --bench proof_construction
-```
-
-## Container Deployment
-
-Docker containerization for deployment and development:
-
-```bash
-# Container image construction
-docker build -t graffiti-search .
-
-# Containerized execution
-docker run -p 8080:8080 graffiti-search
-
-# Development environment initialization
-docker-compose up dev
-```
-
-## Development Contributions
-
-The project architecture permits contributions in the following technical areas:
-
-1. **Environmental Measurement Systems**: Extension of twelve-dimensional sensing capability implementations
-2. **Atmospheric Processing Algorithms**: Optimization of molecular computation mechanisms
-3. **Temporal Coordination Protocols**: Enhancement of precision-by-difference timing implementations
-4. **S-Entropy Navigation Systems**: Improvement of impossibility optimization algorithms
-5. **Web Interface Components**: Development of user interaction and data visualization systems
-
-## Technical Documentation
-
-System documentation is organized into the following technical references:
-
-- [Theoretical Foundations](docs/theory.md)
-- [System Architecture Guide](docs/architecture.md)  
-- [API Reference Documentation](docs/api.md)
-- [Environmental Measurement Protocols](docs/environmental.md)
-- [Atmospheric Processing Specifications](docs/atmospheric.md)
-- [Temporal Coordination Implementation](docs/temporal.md)
-- [WebAssembly Integration Guide](docs/wasm.md)
-
-## Theoretical Literature Base
-
-The implementation incorporates concepts from the following theoretical work:
-
-1. **"On the Logical Prerequisites for Significance"** - Mathematical analysis of systematic impossibility constraints
-2. **"Ephemeral Intelligence Framework"** - Environmental information processing theoretical model
-3. **"Sango Rine Shumba Temporal Coordination"** - Precision-by-difference temporal architecture specification
-4. **"Saint Stella-Lorraine S-Entropy Framework"** - Strategic impossibility optimization methodology
-5. **"Multi-Dimensional Temporal Ephemeral Cryptography"** - Environmental security theoretical framework
-
-## Implementation Status
-
-```mermaid
-gantt
-    title System Implementation Progress
-    dateFormat X
-    axisFormat %d
-    
-    section Core Systems
-    Environmental Framework       :done, env, 0, 30
-    Atmospheric Processing        :done, atm, 0, 30
-    Temporal Coordination         :done, temp, 0, 25
-    WebAssembly Support          :done, wasm, 0, 20
-    
-    section Advanced Features
-    S-Entropy Navigation         :active, sent, 25, 45
-    Full Molecular Network       :pending, mol, 45, 65
-    Production Interface         :pending, prod, 50, 70
-    
-    section Integration
-    API Development              :pending, api, 60, 80
-    Performance Optimization     :pending, perf, 70, 90
-    Deployment Infrastructure    :pending, deploy, 80, 100
-```
-
-Current implementation status:
-- Environmental measurement framework: Complete
-- Atmospheric molecular processing foundation: Complete
-- Temporal coordination basic implementation: Complete
-- WebAssembly compilation support: Complete
-- S-entropy navigation system: In development
-- Full atmospheric molecular network: Planned
-- Production web interface: Planned
-- API endpoints for integration: Planned
-- Performance optimization: Planned
-- Global deployment infrastructure: Planned
-
-## Operational Philosophy
-
-The system architecture is based on the principle of systematic impossibility optimization rather than traditional constraint avoidance. Conventional information retrieval systems encounter fundamental limitations when attempting to circumvent inherent physical and logical constraints. This implementation achieves operational efficiency through constraint integration:
-
-```mermaid
-graph TD
-    A[Traditional Approach] --> A1[Constraint Avoidance]
-    A1 --> A2[System Limitations]
-    
-    B[Systematic Impossibility Approach] --> B1[Constraint Integration]
-    B1 --> B2[Optimal Functionality]
-    
-    C[Constraints] --> C1[Meaning Impossibility]
-    C[Constraints] --> C2[Knowledge Boundedness]  
-    C[Constraints] --> C3[Solution Unknowability]
-    
-    C1 --> B1
-    C2 --> B1
-    C3 --> B1
-```
-
-Core operational principles:
-
-- **Meaning Impossibility Integration**: System functionality without semantic content generation requirements
-- **Knowledge Boundedness Optimization**: Operational constraints optimized for finite observer systems
-- **Solution Unknowability Utilization**: Operational efficiency through non-transparent solution mechanisms
+The theory is complete and validated (see the manuscript's Numerical
+Validation section and the accompanying suite). The language specification
+— lexical grammar, context-free grammar, static type system, and operational
+semantics — is written and proved sound in the manuscript. An implementation
+of the compiler and orchestration runtime does not yet exist.
 
 ## License
 
-This project is distributed under the MIT License. Complete license terms are available in the [LICENSE](LICENSE) file.
+MIT. See [LICENSE](LICENSE).
 
-## Author Information
+## Author
 
-**Kundai Farai Sachikonye**
-- Institutional Affiliation: Technical University of Munich (TUM)
-- Email: kundai.sachikonye@wzw.tum.de
-- Research Areas: Theoretical Computer Science, Environmental Information Systems
-
-## Technical Summary
-
-The Graffiti Search system represents an implementation of information retrieval architecture based on environmental state construction and systematic impossibility optimization. The system operates through alignment with physical reality's computational mechanisms rather than abstraction from fundamental constraints.
+Kundai Farai Sachikonye, Technical University of Munich.
+`kundai.sachikonye@wzw.tum.de`

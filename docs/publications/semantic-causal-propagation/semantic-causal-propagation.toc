@@ -1,0 +1,59 @@
+\contentsline {part}{I\hspace {1em}Foundations}{2}{part.1}%
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}The question}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}The recognition/search identity}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Contributions}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Method}{4}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}Organisation}{4}{subsection.1.5}%
+\contentsline {section}{\numberline {2}The Search Medium}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Contact graphs}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Separation cost}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}The Resolution Floor}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Non-completability}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Identification and its residual}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}The floor theorem}{5}{subsection.3.3}%
+\contentsline {part}{II\hspace {1em}The Search Calculus}{6}{part.2}%
+\contentsline {section}{\numberline {4}Individuation by Negation and the Recognition/Search Identity}{6}{section.4}%
+\contentsline {subsection}{\numberline {4.1}No privileged claim}{6}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Individuation by negation}{6}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Decoding and projection: two readings of one map}{8}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Representation Mobility}{8}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Representations of a claim}{8}{subsection.5.1}%
+\contentsline {section}{\numberline {6}Path Opacity and Convergence Admissibility}{9}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Alignment and propagation}{9}{subsection.6.1}%
+\contentsline {section}{\numberline {7}Catalytic Composition and Coherence}{11}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Catalysts and catalytic power}{11}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}The multiplicative law}{11}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Coherence requires a triangle}{12}{subsection.7.3}%
+\contentsline {section}{\numberline {8}Closure: When a Search Is Finished}{14}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Closure of the admissible set}{14}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Two ways a search can end}{14}{subsection.8.2}%
+\contentsline {part}{III\hspace {1em}The Graffiti Language}{15}{part.3}%
+\contentsline {section}{\numberline {9}Lexical Structure and Grammar}{15}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Design principles}{15}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Lexical grammar}{15}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Context-free grammar}{15}{subsection.9.3}%
+\contentsline {section}{\numberline {10}The Type System}{16}{section.10}%
+\contentsline {subsection}{\numberline {10.1}Types}{16}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}The positivity rule}{16}{subsection.10.2}%
+\contentsline {subsection}{\numberline {10.3}The coherence rule}{17}{subsection.10.3}%
+\contentsline {section}{\numberline {11}Operational Semantics}{17}{section.11}%
+\contentsline {subsection}{\numberline {11.1}Committed steps and the intrinsic clock}{17}{subsection.11.1}%
+\contentsline {subsection}{\numberline {11.2}Seek reduction}{18}{subsection.11.2}%
+\contentsline {part}{IV\hspace {1em}Orchestration}{19}{part.4}%
+\contentsline {section}{\numberline {12}Heterogeneous Catalyst Orchestration}{19}{section.12}%
+\contentsline {subsection}{\numberline {12.1}The catalyst registry}{19}{subsection.12.1}%
+\contentsline {subsection}{\numberline {12.2}The project as a directed acyclic graph}{19}{subsection.12.2}%
+\contentsline {subsection}{\numberline {12.3}Scheduler soundness}{20}{subsection.12.3}%
+\contentsline {part}{V\hspace {1em}Examples and Validation}{21}{part.5}%
+\contentsline {section}{\numberline {13}Worked Examples}{21}{section.13}%
+\contentsline {section}{\numberline {14}Numerical Validation}{22}{section.14}%
+\contentsline {paragraph}{Floor and individuation (01--03).}{22}{section*.3}%
+\contentsline {paragraph}{Representation and receivers (04--05).}{23}{section*.4}%
+\contentsline {paragraph}{Path structure and convergence (06--07).}{23}{section*.5}%
+\contentsline {paragraph}{Catalytic algebra (08--11).}{23}{section*.6}%
+\contentsline {paragraph}{Closure and scheduling (12--14).}{23}{section*.7}%
+\contentsline {section}{\numberline {15}Discussion and Scope}{29}{section.15}%
+\contentsline {subsection}{\numberline {15.1}What is proved, and at what level}{29}{subsection.15.1}%
+\contentsline {subsection}{\numberline {15.2}Honest limitations}{29}{subsection.15.2}%
+\contentsline {subsection}{\numberline {15.3}Conclusion}{29}{subsection.15.3}%
