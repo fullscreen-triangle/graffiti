@@ -1,4 +1,9 @@
-# Graffiti
+<h1 align="center">Graffiti</h1>
+<p align="center"><em>The future can only be approached from the past</em></p>
+
+<p align="center">
+  <img src="./assets/img/National-Park-Museum-Shipka-Buzludzha.jpg alt="Logo" width="500"/>
+</p>
 
 Graffiti is a search system built on a single structural premise: search and
 recognition are the same operation. To recognise an object is to place a
