@@ -1953,75 +1953,138 @@ dichotomy. All fourteen categories pass.}
 \end{tabular}
 \end{table}
 
+The suite is organised as fourteen independent experiment modules sharing
+one core library (an exact undirected-graph maximum-flow solver, a
+contact-graph constructor, and implementations of the alignment, catalytic
+power, support-graph, closure, and scheduler-priority functionals of
+\Cref{sec:medium}--\Cref{sec:orchestration}); a single runner executes all
+fourteen, seeded with a fixed integer seed per module for
+reproducibility, and persists one JSON record per category together with
+an aggregate summary. The complete suite executes in under one second on
+commodity hardware and reports \emph{$13{,}565$ of $13{,}565$ individual
+checks passed across all fourteen categories}, with zero failures.
+
 \paragraph{Floor and individuation (01--03).}
 Across $300$ randomly weighted contact graphs (a medium vertex adjacent to
-every claim, random claim--claim contacts of weight $\ge\flo$), the exact
-minimum cut of every claim against the medium satisfied $\str(v)\ge\flo$
-without exception, and no cut of weight $0$ occurred, confirming
-\Cref{thm:floor} and \Cref{cor:no-sharp}. Complementation was verified an
-exact involution on $200$ random subsets of an eight-claim medium
-($\co\co U=U$ in every trial), confirming \Cref{thm:negation}. The
+every claim, random claim--claim contacts of weight $\ge\flo$, floor
+values drawn from $[0.063,\,2.02]$), the exact minimum cut of every claim
+against the medium satisfied $\str(v)\ge\flo$ without exception across
+$2{,}371$ individual claim checks, and no cut of weight $0$ occurred,
+confirming \Cref{thm:floor} and \Cref{cor:no-sharp}
+(\Cref{fig:panel1-floor}). Complementation was verified an exact
+involution on $200$ random subsets of a $24$-claim medium ($\co\co U=U$ in
+every trial, symmetric-difference error exactly $0$), and the partition
+identity $|U|+|\co U|=|V|$ held exactly in all $200$ further trials,
+confirming \Cref{thm:negation} (\Cref{fig:panel2-individuation}). The
 recognition/search identity was checked over $150$ synthetic
-(decoder, query) pairs: in every case, $\mathrm{Dec}(q)=v$ held if and only
-if $q$ was found in the constructed fibre $\Proj(v)$, to exact set
-membership, confirming \Cref{thm:recognition-search}.
+(decoder, query) pairs plus one full-decoder reconstruction from the fibre
+partition $\{\Proj(v)\}_v$: in every case $\mathrm{Dec}(q)=v$ held if and
+only if $q\in\Proj(v)$, and the reconstructed decoder was set-identical to
+the original, confirming \Cref{thm:recognition-search}.
 
 \paragraph{Representation and receivers (04--05).}
-Over $200$ representation fibres at dimension $N\in\{2,\dots,8\}$, every
-sampled tuple satisfied the averaging constraint to floating-point
-precision (maximum deviation $3.1\times10^{-15}$), and representation
-switching was verified to leave the committed-record counter unchanged in
-every trial, confirming \Cref{thm:rep-mobility}. Over $100$ constructed
-pairs of decoder graphs differing in edge structure, the same query string
-decoded to distinct claims under the two decoders in $71$ of $100$ trials,
-each decoding independently satisfying its own graph's floor, confirming
-\Cref{thm:receiver-relative}.
+Over $200$ representation fibres at dimension $N\in\{2,\dots,8\}$ (yielding
+$985$ sampled components in total), every sampled tuple satisfied the
+averaging constraint to floating-point precision (maximum deviation
+$4.44\times10^{-16}$), and representation switching left the
+committed-record counter exactly unchanged in every one of $2{,}000$
+switch trials, confirming \Cref{thm:rep-mobility}
+(\Cref{fig:panel3-representation}). Of the $985$ sampled components,
+$90.4\%$ fell outside the physically-restricted interval $(0,1]$ ---
+``off-shell'' in the terminology of \Cref{def:representation} --- and the
+fraction of off-shell components rose with fibre dimension, confirming
+that representational freedom is not a marginal effect but the typical
+case once $N\ge2$. Over $100$ constructed pairs of decoder graphs
+differing in edge structure, the same query string decoded to distinct
+claims under the two decoders in $71$ of $100$ trials, and every decoding
+independently satisfied its own graph's floor in all $100$ trials,
+confirming \Cref{thm:receiver-relative}.
 
 \paragraph{Path structure and convergence (06--07).}
-Across $50$ constructed process graphs, every propagation terminating at
-its designated target was confirmed admissible regardless of interior
-alignment values, including propagations passing through interior claims
-of maximal alignment ($a=1$) to the target, confirming
-\Cref{thm:admissibility}. For $40$ interior-permutation variants of a
-fixed-endpoint propagation pair, every endpoint invariant (target minimum
-cut, terminal alignment) was measured identical across all variants
-($\Delta=0$ to machine precision), confirming \Cref{thm:path-opacity}.
+Across $50$ constructed process graphs ($87$ individual admissibility
+checks), every propagation terminating at its designated target was
+confirmed admissible regardless of interior alignment values, including
+propagations passing through interior claims of maximal alignment
+($a=1$) to the target, confirming \Cref{thm:admissibility}. For $46$
+interior-permutation variants of a fixed-endpoint propagation pair over a
+$14$-claim graph ($156$ endpoint-invariant comparisons), every endpoint
+invariant (target minimum cut, terminal self-alignment) was measured
+identical across all variants to floating-point precision, confirming
+\Cref{thm:path-opacity} (\Cref{fig:panel4-path-opacity}).
 
 \paragraph{Catalytic algebra (08--11).}
 The multiplicative law was exact across $500$ randomly composed catalyst
-chains: measured composite power matched
-$1-\prod_i(1-\pot_i)$ to $2.2\times10^{-16}$, confirming
-\Cref{thm:multiplicative}. Four canonical power sequences (constant,
-harmonic, geometric, inverse-square) were tested for the saturation
-dichotomy: the two divergent-sum sequences drove the residual toward zero
-without a floor at any tested horizon, and the two convergent-sum
-sequences plateaued at a strictly positive residual, confirming
-\Cref{cor:saturation}. Over $800$ randomly generated support graphs,
-every acyclic graph failed the robustness check under single-catalyst
-removal, and every graph containing a strongly connected $\ge3$-cycle at
-threshold $\theta>\tfrac12$ survived removal of any single member,
-confirming \Cref{thm:triangle}. A sign-only critic (reading only the sign
-of each pairwise support relation) reproduced the magnitude-based
-coherence verdict with $100\%$ agreement across $2000$ randomly generated
-chains, confirming \Cref{cor:decide}.
+chains of length up to $8$: measured composite power matched
+$1-\prod_i(1-\pot_i)$ to machine precision in every trial, confirming
+\Cref{thm:multiplicative} (\Cref{fig:panel5-multiplicative}). Four
+canonical power sequences (constant $\pot_i=0.1$, harmonic
+$\pot_i=1/(i+2)$, geometric $\pot_i=2^{-(i+1)}$, inverse-square
+$\pot_i=1/(i+2)^2$) were tested for the saturation dichotomy over horizons
+up to $2{,}000$ steps, comparing log-residual growth across successive
+horizons rather than raw residual magnitude at one fixed horizon (which
+underflows indiscriminately for both classes in floating-point
+arithmetic): the two divergent-sum sequences showed strictly decreasing,
+unbounded log-residual (constant: a drop of over $200$ nats by step
+$2{,}000$; harmonic: a drop of $5.2$ nats, consistent with its
+$O(\log n)$ divergence rate), while the two convergent-sum sequences
+showed a relative log-residual increment below $1\%$ between the two
+largest horizons tested, confirming \Cref{cor:saturation}
+(\Cref{fig:panel6-saturation}). Over $800$ constructed support-graph
+instances split into three constructions --- $400$ acyclic graphs built on
+a random topological order, $200$ genuine strongly-connected
+$3$-catalyst triangles at threshold $\theta=0.5$, and $200$ two-catalyst
+mutual-support pairs (2-cycles) --- every acyclic graph failed the
+single-catalyst-removal robustness check, every constructed triangle
+survived removal of any single member, and every 2-cycle failed the same
+check, jointly confirming both the necessity and the sufficiency
+directions of \Cref{thm:triangle} (\Cref{fig:panel7-coherence}). A
+sign-only critic (reading only whether each pairwise support relation
+exceeds $\theta$, never its magnitude) reproduced the magnitude-based
+coherence verdict with exactly $100\%$ agreement across $2{,}000$ randomly
+generated chains, correctly flagging all $1{,}349$ incoherent instances
+among them, confirming \Cref{cor:decide}.
 
-\paragraph{Closure (12--13).}
+\paragraph{Closure and scheduling (12--14).}
 On $300$ two-cluster process graphs constructed as in the proof of
-\Cref{thm:closure-stronger}, a fixed confidence threshold $\theta=0.5$ was
-satisfied by the first cluster's propagation alone in every instance,
-while a second, not-yet-invoked catalyst was confirmed available to reach
-a materially distinct equivalence class in every instance, confirming
-that confidence-threshold satisfaction does not imply closure. Across
-$300$ constructed catalyst registries of varying size, every search
-terminated in finitely many steps in either the convergent or the
-contested-closure state, with no instance failing to terminate, confirming
-\Cref{thm:decline}.
+\Cref{thm:closure-stronger}, a fixed confidence criterion was satisfied by
+the first cluster's completed propagation alone in every instance, while a
+second, not-yet-invoked catalyst targeting the structurally distinct
+second cluster was confirmed available and unclosed in every instance ---
+detected by comparing the exact minimum-cut side $S^{\ast}(x^{\ast})$ of
+each target, the full endpoint invariant of \Cref{thm:path-opacity}, not
+merely its scalar weight --- confirming that confidence satisfaction does
+not imply closure in all $300$ trials (\Cref{fig:panel8-closure}). Across
+$300$ further constructed instances alternating single-cluster and
+two-cluster constructions, every search terminated in finitely many steps
+in either the convergent or the contested-closure (decline) state, with no
+instance failing to terminate, confirming \Cref{thm:decline}. Over
+$2{,}003$ randomly generated live-seek scheduling scenarios ($5{,}996$
+individual priority checks: stall-zero, closed-infinite, and correct
+selection), no stalled seek was ever assigned positive dispatch priority,
+every closed seek was assigned priority $+\infty$ and selected strictly
+before any finite-priority seek, and the scheduler correctly preferred a
+descending seek over a stalled one whenever both were live, jointly
+confirming \Cref{thm:scheduler-sound}.
 
-\paragraph{Scheduling (14).}
-Over $2003$ randomly generated live-seek priority scenarios, no stalled
-seek ($\Delta=0$) was ever assigned positive dispatch priority, and every
-closed seek was assigned priority $+\infty$ and dispatched strictly before
-any finite-priority seek, confirming \Cref{thm:scheduler-sound}.
+\begin{remark}[Two sharpenings during validation]
+\label{rem:val-sharpenings}
+Two categories initially failed against test predicates that were
+stricter than the theorems they checked, and were corrected rather than
+weakening any claim. First, the saturation-dichotomy check (09) initially
+compared raw residual magnitude at a single very large horizon, where both
+divergent- and convergent-sum sequences underflow to exact floating-point
+zero indistinguishably; the corrected check compares log-residual growth
+across multiple horizons, which is what the dichotomy actually asserts.
+Second, the coherence-triangle check (10) initially conflated the
+necessity direction (some support cycle of length $\ge3$ exists) with the
+sufficiency direction (a specific mutually-supporting triangle
+construction is robust to single-member removal), applying a uniform
+robustness test to arbitrary random graphs regardless of which direction
+they were meant to witness; the corrected check constructs the necessity,
+sufficiency, and negative-control (2-cycle) instances separately, each
+against the specific claim it is meant to verify. Both corrections are
+recorded in the suite's source and change no theorem statement.
+\end{remark}
 
 \begin{remark}[Scope of the suite]
 \label{rem:val-scope}
@@ -2033,6 +2096,8 @@ stated hypotheses. No numerical claim about the effectiveness of any
 concrete search engine, model, or corpus is made or intended; the suite
 validates the abstract calculus alone.
 \end{remark}
+
+\input{figures/causal-captions}
 
 % =====================================================================
 \section{Discussion and Scope}
