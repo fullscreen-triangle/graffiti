@@ -1,0 +1,25 @@
+{
+  "category_id": "10",
+  "theorem": "Theorem 7.8 (Coherence Requires Three Mutually Supporting Catalysts)",
+  "check_type": "Structural",
+  "seed": 42,
+  "n_checks": 800,
+  "n_passed": 800,
+  "passed": true,
+  "max_error": null,
+  "details": {
+    "theta": 0.5,
+    "necessity": {
+      "n_acyclic_graphs": 400,
+      "n_correctly_non_robust": 400
+    },
+    "sufficiency": {
+      "n_triangles": 200,
+      "n_correctly_robust": 200
+    },
+    "two_cycle_negative_control": {
+      "n_two_cycles": 200,
+      "n_correctly_non_robust": 200
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "category_id": "11",
+  "theorem": "Corollary 7.9 (Ordinal Decidability of Coherence)",
+  "check_type": "Structural",
+  "seed": 42,
+  "n_checks": 2000,
+  "n_passed": 2000,
+  "passed": true,
+  "max_error": null,
+  "details": {
+    "n_chains": 2000,
+    "theta": 0.5,
+    "agreement_rate": 1.0,
+    "n_incoherent_total": 1349,
+    "n_incoherent_correctly_flagged": 1349
+  }
+}

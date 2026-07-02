@@ -1,0 +1,17 @@
+{
+  "category_id": "02",
+  "theorem": "Theorem 4.2 (Individuation by Negation)",
+  "check_type": "Identity",
+  "seed": 42,
+  "n_checks": 400,
+  "n_passed": 400,
+  "passed": true,
+  "max_error": 0.0,
+  "details": {
+    "medium_size": 8,
+    "n_involution_trials": 200,
+    "involution_passed": 200,
+    "n_partition_trials": 200,
+    "partition_passed": 200
+  }
+}

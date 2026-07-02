@@ -1,0 +1,151 @@
+{
+  "suite": "semantic-causal-propagation",
+  "n_categories": 14,
+  "n_categories_passed": 14,
+  "total_checks": 13565,
+  "total_passed": 13565,
+  "all_passed": true,
+  "elapsed_seconds": 0.32597970962524414,
+  "categories": [
+    {
+      "category_id": "01",
+      "module": "e01_floor",
+      "theorem": "Theorem 3.2 (Resolution Floor)",
+      "check_type": "Bound",
+      "n_checks": 2371,
+      "n_passed": 2371,
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "category_id": "02",
+      "module": "e02_individuation",
+      "theorem": "Theorem 4.2 (Individuation by Negation)",
+      "check_type": "Identity",
+      "n_checks": 400,
+      "n_passed": 400,
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "category_id": "03",
+      "module": "e03_recognition_search",
+      "theorem": "Theorem 4.5 (Recognition/Search Identity)",
+      "check_type": "Identity",
+      "n_checks": 151,
+      "n_passed": 151,
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "category_id": "04",
+      "module": "e04_representation_mobility",
+      "theorem": "Theorem 5.2 (Representation Mobility)",
+      "check_type": "Identity",
+      "n_checks": 400,
+      "n_passed": 400,
+      "passed": true,
+      "max_error": 4.440892098500626e-16
+    },
+    {
+      "category_id": "05",
+      "module": "e05_receiver_relativity",
+      "theorem": "Theorem 5.4 (Receiver-Relative Decoding is Not Error)",
+      "check_type": "Structural",
+      "n_checks": 100,
+      "n_passed": 100,
+      "passed": true,
+      "max_error": null
+    },
+    {
+      "category_id": "06",
+      "module": "e06_convergence_admissibility",
+      "theorem": "Theorem 6.3 (Convergence Admissibility)",
+      "check_type": "Identity",
+      "n_checks": 87,
+      "n_passed": 87,
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "category_id": "07",
+      "module": "e07_path_opacity",
+      "theorem": "Theorem 6.4 (Path Opacity)",
+      "check_type": "Identity",
+      "n_checks": 156,
+      "n_passed": 156,
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "category_id": "08",
+      "module": "e08_multiplicative_law",
+      "theorem": "Theorem 7.3 (Multiplicative Composition)",
+      "check_type": "Identity",
+      "n_checks": 500,
+      "n_passed": 500,
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "category_id": "09",
+      "module": "e09_saturation_dichotomy",
+      "theorem": "Corollary 7.5 (Saturation Dichotomy)",
+      "check_type": "Boundary",
+      "n_checks": 4,
+      "n_passed": 4,
+      "passed": true,
+      "max_error": null
+    },
+    {
+      "category_id": "10",
+      "module": "e10_coherence_triangle",
+      "theorem": "Theorem 7.8 (Coherence Requires Three Mutually Supporting Catalysts)",
+      "check_type": "Structural",
+      "n_checks": 800,
+      "n_passed": 800,
+      "passed": true,
+      "max_error": null
+    },
+    {
+      "category_id": "11",
+      "module": "e11_ordinal_decidability",
+      "theorem": "Corollary 7.9 (Ordinal Decidability of Coherence)",
+      "check_type": "Structural",
+      "n_checks": 2000,
+      "n_passed": 2000,
+      "passed": true,
+      "max_error": null
+    },
+    {
+      "category_id": "12",
+      "module": "e12_closure_vs_threshold",
+      "theorem": "Theorem 8.2 (Closure is Strictly Stronger than a Confidence Threshold)",
+      "check_type": "Structural",
+      "n_checks": 300,
+      "n_passed": 300,
+      "passed": true,
+      "max_error": null
+    },
+    {
+      "category_id": "13",
+      "module": "e13_convergent_or_declined",
+      "theorem": "Theorem 8.3 (Convergent Closure or Honest Decline)",
+      "check_type": "Boundary",
+      "n_checks": 300,
+      "n_passed": 300,
+      "passed": true,
+      "max_error": null
+    },
+    {
+      "category_id": "14",
+      "module": "e14_scheduler_soundness",
+      "theorem": "Theorem 10.6 (Scheduler Soundness)",
+      "check_type": "Identity",
+      "n_checks": 5996,
+      "n_passed": 5996,
+      "passed": true,
+      "max_error": 0.0
+    }
+  ]
+}

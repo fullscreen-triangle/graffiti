@@ -1,0 +1,13 @@
+{
+  "category_id": "14",
+  "theorem": "Theorem 10.6 (Scheduler Soundness)",
+  "check_type": "Identity",
+  "seed": 42,
+  "n_checks": 5996,
+  "n_passed": 5996,
+  "passed": true,
+  "max_error": 0.0,
+  "details": {
+    "n_trials": 2003
+  }
+}

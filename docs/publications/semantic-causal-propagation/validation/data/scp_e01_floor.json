@@ -1,0 +1,16 @@
+{
+  "category_id": "01",
+  "theorem": "Theorem 3.2 (Resolution Floor)",
+  "check_type": "Bound",
+  "seed": 42,
+  "n_checks": 2371,
+  "n_passed": 2371,
+  "passed": true,
+  "max_error": 0.0,
+  "details": {
+    "n_graphs": 300,
+    "grid": "300 random graphs, 3-12 claims each",
+    "min_floor_tested": 0.06323773577005616,
+    "max_floor_tested": 2.0188150484867284
+  }
+}

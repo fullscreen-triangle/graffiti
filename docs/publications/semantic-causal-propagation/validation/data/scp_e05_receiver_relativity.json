@@ -1,0 +1,16 @@
+{
+  "category_id": "05",
+  "theorem": "Theorem 5.4 (Receiver-Relative Decoding is Not Error)",
+  "check_type": "Structural",
+  "seed": 42,
+  "n_checks": 100,
+  "n_passed": 100,
+  "passed": true,
+  "max_error": null,
+  "details": {
+    "n_pairs": 100,
+    "n_distinct_decodings": 83,
+    "distinct_decoding_fraction": 0.83,
+    "note": "both decodings independently respect their own graph's floor"
+  }
+}

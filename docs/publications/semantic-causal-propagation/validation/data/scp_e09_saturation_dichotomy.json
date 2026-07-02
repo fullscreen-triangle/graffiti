@@ -1,0 +1,61 @@
+{
+  "category_id": "09",
+  "theorem": "Corollary 7.5 (Saturation Dichotomy)",
+  "check_type": "Boundary",
+  "seed": 42,
+  "n_checks": 4,
+  "n_passed": 4,
+  "passed": true,
+  "max_error": null,
+  "details": {
+    "n_steps": 2000,
+    "horizons": [
+      10,
+      100,
+      1000,
+      2000
+    ],
+    "sequences": {
+      "constant_0.1_divergent": {
+        "log_residual_by_horizon": {
+          "10": -1.0536051565782631,
+          "100": -10.536051565782627,
+          "1000": -105.3605156578249,
+          "2000": -210.72103131564637
+        },
+        "residual_at_smallest_horizon": 0.34867844009999993,
+        "partial_sum_of_powers": 200.0
+      },
+      "harmonic_divergent": {
+        "log_residual_by_horizon": {
+          "10": -2.3978952727983702,
+          "100": -4.615120516841259,
+          "1000": -6.908754779315217,
+          "2000": -7.6014023345837405
+        },
+        "residual_at_smallest_horizon": 0.09090909090909094,
+        "partial_sum_of_powers": 7.17886785373522
+      },
+      "geometric_2^-i_convergent": {
+        "log_residual_by_horizon": {
+          "10": -1.2410853733223315,
+          "100": -1.2420620948124146,
+          "1000": -1.2420620948124146,
+          "2000": -1.2420620948124146
+        },
+        "residual_at_smallest_horizon": 0.289070298419749,
+        "partial_sum_of_powers": 1.0
+      },
+      "inverse_square_convergent": {
+        "log_residual_by_horizon": {
+          "10": -0.6061358035703155,
+          "100": -0.6832948841169335,
+          "1000": -0.6921486782303554,
+          "2000": -0.6926475552685122
+        },
+        "residual_at_smallest_horizon": 0.5454545454545455,
+        "partial_sum_of_powers": 0.6444344415775805
+      }
+    }
+  }
+}

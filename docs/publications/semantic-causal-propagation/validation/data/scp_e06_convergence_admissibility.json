@@ -1,0 +1,13 @@
+{
+  "category_id": "06",
+  "theorem": "Theorem 6.3 (Convergence Admissibility)",
+  "check_type": "Identity",
+  "seed": 42,
+  "n_checks": 87,
+  "n_passed": 87,
+  "passed": true,
+  "max_error": 0.0,
+  "details": {
+    "n_graphs": 50
+  }
+}

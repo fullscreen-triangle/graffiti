@@ -1,0 +1,13 @@
+{
+  "category_id": "08",
+  "theorem": "Theorem 7.3 (Multiplicative Composition)",
+  "check_type": "Identity",
+  "seed": 42,
+  "n_checks": 500,
+  "n_passed": 500,
+  "passed": true,
+  "max_error": 0.0,
+  "details": {
+    "n_chains": 500
+  }
+}
