@@ -113,6 +113,7 @@ export {
   type InterpreterOptions,
   type SeekExecutionResult,
   type ClaimTerms,
+  type ContactRow,
 } from "./lang/interpreter";
 export { isClaim, isDecline, graffitiTypeOf, type ClaimValue, type DeclineValue, type GraffitiValue } from "./lang/values";
 

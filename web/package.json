@@ -11,9 +11,12 @@
     "test:graffiti": "tsx src/graffiti/test/run-all.ts"
   },
   "dependencies": {
-    "@buhera/purpose": "^0.1.0",
+    "@buhera/purpose": "file:../../purpose/mechanistic-synthesis/purpose-ts",
     "@react-three/drei": "^9.99.0",
     "@react-three/fiber": "^8.15.19",
+    "@types/d3": "^7.4.3",
+    "crossfilter2": "^1.5.4",
+    "d3": "^7.9.0",
     "eslint": "^8.35.0",
     "eslint-config-next": "^13.2.1",
     "framer-motion": "^10.0.1",

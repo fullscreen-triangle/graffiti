@@ -142,6 +142,30 @@ export interface ClaimTerms {
 }
 
 /**
+ * One committed contact event, logged verbatim as it happens (Definition:
+ * Committed Step). This is the finest-grained record the interpreter
+ * produces -- a claim or a seek is an aggregate over these rows, never
+ * the other way around -- so it is the natural row shape for a
+ * crossfilter-style exploration UI (web/src/pages/explore.js): every
+ * parameter a user might want to vary (floor, catalyst power, which
+ * catalyst, which seek) is already a native field here, with no
+ * additional derivation needed.
+ */
+export interface ContactRow {
+  /** Position in the committed record at the moment this contact was made. */
+  index: number;
+  from: string;
+  to: string;
+  weight: number;
+  seekName: string;
+  /** Null for the seed->target contact that exists with no via{} chain. */
+  catalystName: string | null;
+  /** Catalytic power kappa in [0,1] this contact realised, if a catalyst produced it. */
+  power: number | null;
+  floor: number;
+}
+
+/**
  * The interpreter executes one project's seeks in dependency order over a
  * single, growing ContactGraph (Definition: Contact Graph is the runtime
  * state of a Graffiti program). The committed record `M` is the
@@ -155,6 +179,7 @@ export class Interpreter {
   private readonly registry: CatalystRegistry;
   private readonly maxCatalystInvocations: number;
   private readonly termsByClaim = new Map<string, Set<string>>();
+  private readonly contacts: ContactRow[] = [];
 
   constructor(options: InterpreterOptions) {
     this.registry = options.registry;
@@ -172,6 +197,11 @@ export class Interpreter {
   /** Every claim's accumulated term set, for handoff to a GraffitiSession. */
   claimTerms(): ClaimTerms[] {
     return Array.from(this.termsByClaim, ([claim, terms]) => ({ claim, terms }));
+  }
+
+  /** Every committed contact, in commit order -- the row set for a crossfilter view. */
+  contactLog(): ContactRow[] {
+    return this.contacts.slice();
   }
 
   /** Merge additional terms into a claim's recorded distinctions (tau(u)). */
@@ -206,15 +236,35 @@ export class Interpreter {
    * `from` to `to` at the given weight, strictly incrementing the
    * committed record (Theorem: Monotonicity of the Committed Record). Not
    * a pure function: this mutates the interpreter's graph state, realising
-   * "evaluation is measurement."
+   * "evaluation is measurement." Also appends a ContactRow to the log
+   * regardless of whether the edge was new (a crossfilter view over
+   * contactLog() wants every commit attempt, including re-affirmations of
+   * an existing edge, since those are still real committed steps by
+   * Theorem: Monotonicity of the Committed Record).
    */
-  private commitContact(from: string, to: string, weight: number): void {
+  private commitContact(
+    from: string,
+    to: string,
+    weight: number,
+    meta: { seekName: string; catalystName: string | null; power: number | null },
+  ): void {
     this.ensureClaim(from);
     this.ensureClaim(to);
+    const appliedWeight = Math.max(weight, this.graph.floor);
     if (!this.graph.hasEdge(from, to)) {
-      this.graph.addEdge(from, to, Math.max(weight, this.graph.floor));
+      this.graph.addEdge(from, to, appliedWeight);
     }
     this.committedRecord += 1;
+    this.contacts.push({
+      index: this.committedRecord,
+      from,
+      to,
+      weight: appliedWeight,
+      seekName: meta.seekName,
+      catalystName: meta.catalystName,
+      power: meta.power,
+      floor: this.graph.floor,
+    });
   }
 
   private async runBranch(
@@ -240,7 +290,11 @@ export class Interpreter {
       // Catalytic power scales the bond strength above that baseline: a
       // stronger catalyst produces a more tightly bound contact.
       const bondWeight = this.graph.floor * (2 + 8 * result.power);
-      this.commitContact(currentClaim, result.claim, bondWeight);
+      this.commitContact(currentClaim, result.claim, bondWeight, {
+        seekName,
+        catalystName,
+        power: result.power,
+      });
 
       // Record this claim's distinctions (tau(u)) for @buhera/purpose: the
       // seek it was reached under, the catalyst that resolved it, and its
@@ -273,7 +327,11 @@ export class Interpreter {
     this.addTerms(targetName, [seek.name]);
 
     const seedName = `${seek.name}:seed`;
-    this.commitContact(seedName, targetName, this.graph.floor);
+    this.commitContact(seedName, targetName, this.graph.floor, {
+      seekName: seek.name,
+      catalystName: null,
+      power: null,
+    });
 
     const startRecord = this.committedRecord;
     // The region description itself (`targetName`) is a candidate target,
