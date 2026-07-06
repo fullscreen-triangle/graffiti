@@ -19,6 +19,7 @@ import * as t10 from "./t10-scheduler";
 import * as t11 from "./t11-lexer-parser";
 import * as t12 from "./t12-typechecker";
 import * as t13 from "./t13-interpreter";
+import * as t14 from "./t14-purpose-session";
 
 async function main() {
   const results: CheckResult[] = [
@@ -35,6 +36,7 @@ async function main() {
     t11.run(),
     t12.run(),
     await t13.run(),
+    await t14.run(),
   ];
 
   const allOk = reportAll(results);

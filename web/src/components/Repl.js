@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
+import * as graffiti from "@/graffiti";
 
 let nextCellId = 1;
 
@@ -10,12 +11,15 @@ function createCell(source = "") {
  * Each cell runs in its own function scope but shares one persistent
  * `scope` object across the notebook, so a function defined in one cell
  * is callable from a later cell -- the one property a REPL needs that a
- * single <textarea> does not give you for free.
+ * single <textarea> does not give you for free. `scope.graffiti` exposes
+ * the whole library (CatalystRegistry, runSource, parseProgram, ...) so a
+ * cell can compile and execute .grf source directly; the function is
+ * async so a cell body may `await` a seek's result.
  */
 function runCell(source, scope) {
   const fn = new Function(
     "scope",
-    `with (scope) { return (function() { ${source}\n})(); }`,
+    `with (scope) { return (async function() { ${source}\n})(); }`,
   );
   return fn(scope);
 }
@@ -82,30 +86,36 @@ function formatOutput(value) {
 
 export default function Repl() {
   const [cells, setCells] = useState([createCell()]);
-  const scopeRef = useRef({});
+  const scopeRef = useRef({ graffiti });
 
   const handleChange = useCallback((id, source) => {
     setCells((prev) => prev.map((c) => (c.id === id ? { ...c, source } : c)));
   }, []);
 
-  const handleRun = useCallback((id) => {
-    setCells((prev) =>
-      prev.map((c) => {
-        if (c.id !== id) return c;
-        try {
-          const logs = [];
-          const scope = scopeRef.current;
-          scope.console = { ...console, log: (...args) => logs.push(args.map(formatOutput).join(" ")) };
-          const result = runCell(c.source, scope);
-          const output = [...logs, result !== undefined ? formatOutput(result) : null]
-            .filter((x) => x !== null && x !== "")
-            .join("\n");
-          return { ...c, output, error: null };
-        } catch (err) {
-          return { ...c, output: null, error: String(err && err.message ? err.message : err) };
-        }
-      }),
-    );
+  const handleRun = useCallback(async (id) => {
+    const logs = [];
+    const scope = scopeRef.current;
+    scope.console = { ...console, log: (...args) => logs.push(args.map(formatOutput).join(" ")) };
+
+    let source;
+    setCells((prev) => {
+      source = prev.find((c) => c.id === id)?.source ?? "";
+      return prev;
+    });
+
+    try {
+      const result = await runCell(source, scope);
+      const output = [...logs, result !== undefined ? formatOutput(result) : null]
+        .filter((x) => x !== null && x !== "")
+        .join("\n");
+      setCells((prev) => prev.map((c) => (c.id === id ? { ...c, output, error: null } : c)));
+    } catch (err) {
+      setCells((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, output: null, error: String(err && err.message ? err.message : err) } : c,
+        ),
+      );
+    }
   }, []);
 
   const handleDelete = useCallback((id) => {

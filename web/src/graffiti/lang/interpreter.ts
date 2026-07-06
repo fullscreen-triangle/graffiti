@@ -128,6 +128,20 @@ export interface InterpreterOptions {
 }
 
 /**
+ * The distinctions (tau(u), in @buhera/purpose's vocabulary) a committed
+ * claim draws: the seek it was committed under, the catalyst that
+ * resolved it (if any), and the stringified arguments that catalyst was
+ * invoked with. This is the one piece of state Graffiti records purely
+ * for Purpose's benefit -- the calculus itself never reads it -- so a
+ * GraffitiSession (orchestration/session.ts) can hand each claim to
+ * @buhera/purpose as a Step and get reachability/necessity/carry back.
+ */
+export interface ClaimTerms {
+  claim: string;
+  terms: Set<string>;
+}
+
+/**
  * The interpreter executes one project's seeks in dependency order over a
  * single, growing ContactGraph (Definition: Contact Graph is the runtime
  * state of a Graffiti program). The committed record `M` is the
@@ -140,6 +154,7 @@ export class Interpreter {
   private committedRecord = 0;
   private readonly registry: CatalystRegistry;
   private readonly maxCatalystInvocations: number;
+  private readonly termsByClaim = new Map<string, Set<string>>();
 
   constructor(options: InterpreterOptions) {
     this.registry = options.registry;
@@ -152,6 +167,22 @@ export class Interpreter {
 
   get record(): number {
     return this.committedRecord;
+  }
+
+  /** Every claim's accumulated term set, for handoff to a GraffitiSession. */
+  claimTerms(): ClaimTerms[] {
+    return Array.from(this.termsByClaim, ([claim, terms]) => ({ claim, terms }));
+  }
+
+  /** Merge additional terms into a claim's recorded distinctions (tau(u)). */
+  private addTerms(claim: string, terms: Iterable<string>): void {
+    if (claim === MEDIUM) return;
+    let set = this.termsByClaim.get(claim);
+    if (!set) {
+      set = new Set<string>();
+      this.termsByClaim.set(claim, set);
+    }
+    for (const t of terms) set.add(t);
   }
 
   /**
@@ -189,6 +220,7 @@ export class Interpreter {
   private async runBranch(
     seed: string,
     branch: FlattenedCatalystStep[],
+    seekName: string,
   ): Promise<{ target: string; power: number[] }> {
     let currentClaim = seed;
     const powers: number[] = [];
@@ -209,6 +241,14 @@ export class Interpreter {
       // stronger catalyst produces a more tightly bound contact.
       const bondWeight = this.graph.floor * (2 + 8 * result.power);
       this.commitContact(currentClaim, result.claim, bondWeight);
+
+      // Record this claim's distinctions (tau(u)) for @buhera/purpose: the
+      // seek it was reached under, the catalyst that resolved it, and its
+      // call arguments -- the calculus never reads this, only a
+      // GraffitiSession does.
+      const argTerms = Object.entries(args).map(([k, v]) => `${k}=${String(v)}`);
+      this.addTerms(result.claim, [seekName, catalystName, ...argTerms]);
+
       currentClaim = result.claim;
       powers.push(result.power);
     }
@@ -230,6 +270,7 @@ export class Interpreter {
 
     const targetName = regionTargetName(seek.toward, this.env);
     this.ensureClaim(targetName);
+    this.addTerms(targetName, [seek.name]);
 
     const seedName = `${seek.name}:seed`;
     this.commitContact(seedName, targetName, this.graph.floor);
@@ -249,7 +290,7 @@ export class Interpreter {
       let invocations = 0;
       for (const branch of branches) {
         if (invocations >= this.maxCatalystInvocations) break;
-        const { target } = await this.runBranch(seedName, branch);
+        const { target } = await this.runBranch(seedName, branch, seek.name);
         reachedTargets.push(target);
         invocations += branch.length;
       }

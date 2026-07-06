@@ -88,6 +88,11 @@ export {
   type RunProjectOptions,
   type RunProjectResult,
 } from "./orchestration/orchestrator";
+export {
+  GraffitiSession,
+  type GraffitiSessionOptions,
+  type RunInSessionResult,
+} from "./orchestration/session";
 
 // --- The .grf language ---------------------------------------------------
 export { tokenize, LexError, type Token, type TokenType } from "./lang/lexer";
@@ -101,7 +106,14 @@ export {
   type Diagnostic,
   type Severity,
 } from "./lang/typechecker";
-export { Interpreter, Environment, GraffitiRuntimeError, type InterpreterOptions, type SeekExecutionResult } from "./lang/interpreter";
+export {
+  Interpreter,
+  Environment,
+  GraffitiRuntimeError,
+  type InterpreterOptions,
+  type SeekExecutionResult,
+  type ClaimTerms,
+} from "./lang/interpreter";
 export { isClaim, isDecline, graffitiTypeOf, type ClaimValue, type DeclineValue, type GraffitiValue } from "./lang/values";
 
 // --- Convenience: compile + run a source string in one call --------------
