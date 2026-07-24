@@ -128,3 +128,7 @@ keys.json
 *.perf
 *.flamegraph
 *.cpuprofile
+
+# spraypaint (split-attention search tool)
+/spraypaint/target/
+.spraypaint/

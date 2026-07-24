@@ -1,0 +1,31 @@
+# Standalone: an empty [workspace] table detaches this crate from graffiti's
+# root workspace (which is a separate, unrelated project) so it builds on its own.
+[workspace]
+
+[package]
+name = "spraypaint"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["Kundai Farai Sachikonye <kundai.sachikonye@bitspark.com>"]
+license = "MIT OR Apache-2.0"
+description = "Split-attention full-text search: BM25 within scenes, water-filling across them. A faithful runtime for the four blueprint invariants of the Split-Attention Synchronised Agents calculus."
+
+[[bin]]
+name = "spraypaint"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+anyhow = "1"
+ignore = "0.4"
+fs2 = "0.4"
+blake3 = "1"
+unicode-segmentation = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
