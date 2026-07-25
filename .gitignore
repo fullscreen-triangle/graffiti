@@ -47,6 +47,11 @@ Thumbs.db
 /build/
 /public/build/
 /node_modules/
+# nested node_modules / build output anywhere (e.g. spraypaint-web app)
+node_modules/
+**/node_modules/
+**/.next/
+**/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
