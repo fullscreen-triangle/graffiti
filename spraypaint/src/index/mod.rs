@@ -196,6 +196,18 @@ pub fn load(root_dir: &Path) -> Result<Index> {
     let index: Index = serde_json::from_str(&data)
         .with_context(|| format!("parsing {}", path.display()))?;
 
+    // The version is written on every save but was never read back, so an index
+    // from an incompatible future build would be parsed on a best-effort basis
+    // and its differences silently misinterpreted. Check it before touching the
+    // contents.
+    if index.schema_version != schema::SCHEMA_VERSION {
+        return Err(anyhow!(
+            "index schema version mismatch: file is v{}, this build expects v{} — re-run `spraypaint index`",
+            index.schema_version,
+            schema::SCHEMA_VERSION
+        ));
+    }
+
     let g = identity::build_self_graph(&index.documents);
     let recomputed = identity::fingerprint(&g);
     if recomputed != index.identity.fingerprint {

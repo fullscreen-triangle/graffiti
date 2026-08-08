@@ -58,6 +58,32 @@ impl PhaseGuard {
         })
     }
 
+    /// Try to enter the construction phase without blocking.
+    ///
+    /// Returns `Ok(None)` when another process holds the lock. `verify` needs
+    /// this: [`construction`](Self::construction) blocks, so a `verify` run
+    /// during an index build would hang indefinitely rather than report
+    /// anything — and a diagnostic command that hangs under exactly the
+    /// contention it exists to diagnose is useless. Contention is reported as
+    /// NOT-APPLICABLE (the check could not run), which is distinct from a
+    /// breach.
+    pub fn try_construction(root_dir: &Path) -> Result<Option<Self>> {
+        let file = open_lock(root_dir)?;
+        match file.try_lock_exclusive() {
+            Ok(()) => Ok(Some(PhaseGuard {
+                _file: file,
+                phase: Phase::Construction,
+            })),
+            // fs2 reports contention as an error rather than a distinguished
+            // value, and the kind differs by platform (WouldBlock on unix,
+            // a raw OS error on Windows). Any failure to acquire *is* the
+            // "someone else holds it" answer for our purposes: we opened the
+            // file successfully just above, so permission and path problems
+            // have already been ruled out.
+            Err(_) => Ok(None),
+        }
+    }
+
     /// Enter the commitment phase (shared). Blocks only while a writer holds
     /// the exclusive lock.
     pub fn commitment(root_dir: &Path) -> Result<Self> {

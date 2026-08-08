@@ -1,0 +1,46 @@
+# Line-ending policy.
+#
+# This repository is developed on Windows with core.autocrlf=true, which
+# rewrites checked-out files to CRLF. For most files that is harmless. For a
+# shell script it is not: a `#!/bin/sh` line stored or checked out with CRLF
+# becomes `#!/bin/sh\r`, and the kernel then looks for an interpreter literally
+# named "sh\r", failing with the notoriously unhelpful
+#
+#     bash: ./install.sh: /bin/sh^M: bad interpreter: No such file or directory
+#
+# Pinning eol=lf makes the working copy LF regardless of core.autocrlf, so the
+# file works when cloned as well as when piped from raw.githubusercontent.com.
+*.sh text eol=lf
+
+# PowerShell is fine with either ending, but pinning CRLF keeps Windows editors
+# (including Notepad, which some users will open this in) from showing it as a
+# single run-on line.
+*.ps1 text eol=crlf
+
+# GitHub Actions runs these on Linux runners; heredocs and multi-line `run:`
+# blocks are executed by bash there, so CRLF would leak \r into shell variables.
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Rust, TypeScript, and web sources: normalise to LF in the repository so
+# diffs stay clean across platforms.
+*.rs text eol=lf
+*.toml text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+
+# Never touch binary content.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.wasm binary

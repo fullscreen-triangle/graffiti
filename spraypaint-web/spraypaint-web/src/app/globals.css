@@ -13,108 +13,21 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
-/* scrollbar styling */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Scrollbars. Applied to every scroll container rather than to a
+   `.scrollbar-thin` class: the components that carried that class were the
+   `.grf` editor and file explorer, both deleted, and the panels that scroll now
+   (results, report, invariants) are plain `overflow-y-auto` divs. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-.scrollbar-thin::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
-.scrollbar-thin::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: #424242;
-  border-radius: 3px;
+  border-radius: 4px;
 }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: #555555;
-}
-
-/* textarea scrollbar */
-textarea::-webkit-scrollbar {
-  width: 8px;
-}
-textarea::-webkit-scrollbar-track {
-  background: #1e1e1e;
-}
-textarea::-webkit-scrollbar-thumb {
-  background: #424242;
-  border-radius: 4px;
-}
-
-/* report styling */
-.report-content {
-  color: #d4d4d4;
-  font-size: 14px;
-  line-height: 1.7;
-  font-family: 'Georgia', 'Times New Roman', serif;
-}
-.report-content p {
-  margin-bottom: 0.8em;
-}
-.report-h1 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 0.6em 0;
-  padding-bottom: 0.3em;
-  border-bottom: 1px solid #333333;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-}
-.report-h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #e0e0e0;
-  margin: 1.5em 0 0.4em 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-}
-.report-h3 {
-  font-size: 15px;
-  font-weight: 600;
-  color: #cccccc;
-  margin: 1.2em 0 0.3em 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-}
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.8em 0;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 12px;
-}
-.report-table td {
-  padding: 6px 10px;
-  border: 1px solid #333333;
-  color: #cccccc;
-}
-.report-table tr:first-child td {
-  background: #252526;
-  font-weight: 600;
-  color: #e0e0e0;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.report-code {
-  background: #252526;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 12px;
-  color: #4fc1ff;
-}
-.report-li {
-  margin-left: 1.2em;
-  margin-bottom: 0.3em;
-}
-
-/* KaTeX overrides for dark theme */
-.report-content .katex {
-  color: #d4d4d4;
-}
-.report-content .katex-display {
-  margin: 1em 0;
-  padding: 0.8em;
-  background: #252526;
-  border-radius: 4px;
-  border-left: 3px solid #007acc;
 }

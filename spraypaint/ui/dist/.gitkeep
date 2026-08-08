@@ -1,0 +1,3 @@
+# Placeholder so ui/dist/ exists in a fresh clone.
+# 'npm run export' fills this with the built UI; rust-embed embeds whatever is here.
+# An empty dist is not an error: 'spraypaint serve' still starts and serves the JSON API.

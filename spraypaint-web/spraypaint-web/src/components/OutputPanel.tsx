@@ -1,81 +1,95 @@
 "use client";
 
-import React, { useState } from "react";
-import { ExecutionState, ScriptDiff } from "@/lib/engine";
-import ForceGraphTab from "./tabs/ForceGraphTab";
-import TrajectoryTab from "./tabs/TrajectoryTab";
-import CatalystTab from "./tabs/CatalystTab";
-import CoherenceTab from "./tabs/CoherenceTab";
-import SceneAllocationTab from "./tabs/SceneAllocationTab";
-import ClosureTab from "./tabs/ClosureTab";
+// Three tabs, down from eight. The five removed ones (Agent Graph, Trajectory,
+// Catalysts, Coherence, Closure) drew `.grf`-calculus quantities the binary does
+// not compute and no endpoint returns.
+
+import { useState } from "react";
+
+import type { AskQuery, AskResponse, Identity, SceneInfo, VerifyResponse } from "@/lib/api";
 import InvariantTab from "./tabs/InvariantTab";
 import ReportTab from "./tabs/ReportTab";
-
-interface Props {
-  state: ExecutionState | null;
-  onCrossfilter: (diff: ScriptDiff) => void;
-}
+import SceneAllocationTab from "./tabs/SceneAllocationTab";
 
 const TABS = [
-  { id: "graph", label: "Agent Graph" },
-  { id: "trajectory", label: "Trajectory" },
-  { id: "catalyst", label: "Catalysts" },
-  { id: "coherence", label: "Coherence" },
-  { id: "scenes", label: "Scenes" },
-  { id: "closure", label: "Closure" },
+  { id: "scenes", label: "Allocation" },
   { id: "invariants", label: "Invariants" },
   { id: "report", label: "Report" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-export default function OutputPanel({ state, onCrossfilter }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("graph");
-
-  const stale = state?.stale ?? false;
+export default function OutputPanel({
+  result,
+  query,
+  identity,
+  scenes,
+  verify,
+  count,
+  stale,
+  running,
+  onBudget,
+  onReverify,
+}: {
+  result: AskResponse | null;
+  query: AskQuery;
+  identity: Identity | null;
+  scenes: SceneInfo[];
+  verify: VerifyResponse | null;
+  count: number | null;
+  stale: boolean;
+  running: boolean;
+  onBudget: (k: number) => void;
+  onReverify: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<TabId>("scenes");
 
   return (
-    <div className="h-full flex flex-col bg-[#1e1e1e] border-l border-[#1e1e1e]">
-      {/* tab bar */}
-      <div className="flex items-center bg-[#252526] border-b border-[#1e1e1e] h-[35px] shrink-0 overflow-x-auto scrollbar-thin">
+    <div className="flex h-full flex-col border-l border-neutral-800 bg-neutral-950">
+      <div className="flex h-[35px] shrink-0 items-center border-b border-neutral-800 bg-neutral-900/60">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-3 h-full text-[12px] whitespace-nowrap border-b-2 transition-colors ${
+            className={`h-full border-b-2 px-3 text-xs transition-colors ${
               activeTab === tab.id
-                ? "text-[#cccccc] border-[#007acc] bg-[#1e1e1e]"
-                : "text-[#858585] border-transparent hover:text-[#cccccc]"
+                ? "border-sky-600 bg-neutral-950 text-neutral-200"
+                : "border-transparent text-neutral-500 hover:text-neutral-300"
             }`}
           >
             {tab.label}
-            {stale && tab.id !== "invariants" && tab.id !== "report" && (
-              <span className="ml-1 w-1.5 h-1.5 rounded-full bg-[#cca700] inline-block" />
+            {/* Invariants and Report describe the index, not the pending query,
+                so a changed query does not make them stale. */}
+            {stale && tab.id === "scenes" && (
+              <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
             )}
           </button>
         ))}
       </div>
 
-      {/* tab content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "graph" && <ForceGraphTab state={state} />}
-        {activeTab === "trajectory" && (
-          <TrajectoryTab state={state} onCrossfilter={onCrossfilter} stale={stale} />
-        )}
-        {activeTab === "catalyst" && (
-          <CatalystTab state={state} onCrossfilter={onCrossfilter} stale={stale} />
-        )}
-        {activeTab === "coherence" && (
-          <CoherenceTab state={state} onCrossfilter={onCrossfilter} stale={stale} />
-        )}
         {activeTab === "scenes" && (
-          <SceneAllocationTab state={state} onCrossfilter={onCrossfilter} stale={stale} />
+          <SceneAllocationTab
+            result={result}
+            scenes={scenes}
+            budget={query.budget}
+            stale={stale}
+            onBudget={onBudget}
+          />
         )}
-        {activeTab === "closure" && (
-          <ClosureTab state={state} onCrossfilter={onCrossfilter} stale={stale} />
+        {activeTab === "invariants" && (
+          <InvariantTab verify={verify} onRefresh={onReverify} busy={running} />
         )}
-        {activeTab === "invariants" && <InvariantTab state={state} />}
-        {activeTab === "report" && <ReportTab state={state} />}
+        {activeTab === "report" && (
+          <ReportTab
+            result={result}
+            query={query}
+            identity={identity}
+            scenes={scenes}
+            verify={verify}
+            count={count}
+          />
+        )}
       </div>
     </div>
   );

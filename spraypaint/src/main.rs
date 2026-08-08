@@ -9,26 +9,19 @@
 //!   Inv 2 never-resetting count (count.rs)
 //!   Inv 3 search-not-fetch     (ask.rs — no answer cache; snippets re-read)
 //!   Inv 4 exclusive phases     (phase.rs — index=exclusive, ask=shared lock)
-
-mod ask;
-mod bm25;
-mod chunk;
-mod config;
-mod count;
-mod index;
-mod output;
-mod phase;
-mod root;
-mod scene;
-mod walk;
-mod waterfill;
+//!
+//! This file is argv parsing, rendering, and exit codes. Everything that touches
+//! the index, the lock, or the count lives in `actions` so that `spraypaint
+//! serve` runs the identical ordering — see the module docs in `lib.rs`.
 
 use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 
-use config::SprayConfig;
+use spraypaint::actions::{self, AskRequest};
+use spraypaint::config::SprayConfig;
+use spraypaint::{output, root};
 
 #[derive(Parser)]
 #[command(name = "spraypaint", version, about = "Split-attention full-text search (BM25 within scenes, water-filling across them)")]
@@ -49,8 +42,36 @@ enum Cmd {
     Count(RootArgs),
     /// List the detected/overridden scenes.
     Scenes(RootArgs),
-    /// Re-check all four invariants; nonzero exit on any breach.
-    Verify(RootArgs),
+    /// Re-check all four invariants. Exit 0 = all pass, 1 = breach, 2 = degenerate.
+    Verify(VerifyArgs),
+    /// Serve the web UI and JSON API on localhost.
+    #[cfg(feature = "serve")]
+    Serve(ServeArgs),
+}
+
+#[cfg(feature = "serve")]
+#[derive(Args)]
+struct ServeArgs {
+    #[arg(long)]
+    root: Option<PathBuf>,
+    /// Port to bind. 7373 is unassigned and away from the crowded dev ports.
+    #[arg(long, default_value_t = 7373)]
+    port: u16,
+    /// Address to bind. Anything other than loopback needs --i-know-this-is-public.
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+    /// Open the URL in a browser after starting.
+    #[arg(long)]
+    open: bool,
+    /// Allow POST /api/index to rebuild the index from the browser.
+    #[arg(long)]
+    allow_index: bool,
+    /// Reload index.json on every request instead of caching it by mtime+len.
+    #[arg(long)]
+    no_cache: bool,
+    /// Required to bind a non-loopback address. See the warning it prints.
+    #[arg(long)]
+    i_know_this_is_public: bool,
 }
 
 #[derive(Args)]
@@ -59,6 +80,21 @@ struct RootArgs {
     root: Option<PathBuf>,
     #[arg(long)]
     json: bool,
+}
+
+#[derive(Args)]
+struct VerifyArgs {
+    #[arg(long)]
+    root: Option<PathBuf>,
+    #[arg(long)]
+    json: bool,
+    /// Treat NOT-APPLICABLE checks as success (exit 0 instead of 2).
+    ///
+    /// For repos that are legitimately too small to exercise an invariant — a
+    /// single-document corpus, a fresh index with nothing committed yet — where
+    /// you want CI green anyway. It does not suppress FAIL.
+    #[arg(long)]
+    allow_degenerate: bool,
 }
 
 #[derive(Args)]
@@ -109,7 +145,63 @@ fn main() -> Result<()> {
         Cmd::Count(a) => cmd_count(a),
         Cmd::Scenes(a) => cmd_scenes(a),
         Cmd::Verify(a) => cmd_verify(a),
+        #[cfg(feature = "serve")]
+        Cmd::Serve(a) => cmd_serve(a),
     }
+}
+
+/// Is this bind address loopback-only?
+///
+/// Parsed as an `IpAddr` rather than string-matched: `127.0.0.1` is not the only
+/// loopback address, and `127.0.0.2` is loopback too while looking like a public
+/// address to a naive comparison. `0.0.0.0` and `::` are *not* loopback — they
+/// are the wildcard, which binds every interface, and are exactly the case the
+/// second flag exists to catch.
+#[cfg(feature = "serve")]
+fn is_loopback(host: &str) -> bool {
+    host.parse::<std::net::IpAddr>()
+        .map(|ip| ip.is_loopback())
+        .unwrap_or(false)
+}
+
+#[cfg(feature = "serve")]
+fn cmd_serve(a: ServeArgs) -> Result<()> {
+    let root_dir = root::detect_root(a.root.as_deref())?;
+
+    // Two flags, not one, because the failure mode is silent. A user who types
+    // `--host 0.0.0.0` to make the UI reachable from their phone is not thinking
+    // about the fact that they are also publishing their source tree; the flag
+    // named for the consequence is what makes them think about it.
+    if !is_loopback(&a.host) && !a.i_know_this_is_public {
+        anyhow::bail!(
+            "refusing to bind {} — that address is reachable from other machines.\n\n\
+             This server has NO AUTHENTICATION and:\n  \
+             * serves arbitrary file content from {} (snippets are re-read from disk),\n  \
+             * lets anyone who can reach it irreversibly inflate the monotone count,\n  \
+             * exposes your index's identity fingerprint.\n\n\
+             If that is genuinely what you want, add --i-know-this-is-public.",
+            a.host,
+            root_dir.display()
+        );
+    }
+    if !is_loopback(&a.host) {
+        eprintln!(
+            "WARNING: bound to {}, reachable from other machines, with no authentication.\n\
+             WARNING: anyone who can reach this port can read the content of {}.",
+            a.host,
+            root_dir.display()
+        );
+    }
+
+    spraypaint::serve::preflight(&root_dir, a.allow_index);
+    spraypaint::serve::run(spraypaint::serve::ServeConfig {
+        root: root_dir,
+        port: a.port,
+        host: a.host,
+        allow_index: a.allow_index,
+        no_cache: a.no_cache,
+        open: a.open,
+    })
 }
 
 fn cmd_index(a: IndexArgs) -> Result<()> {
@@ -123,42 +215,38 @@ fn cmd_index(a: IndexArgs) -> Result<()> {
     }
 
     if a.dry_run {
-        let files = walk::walk(&root_dir, &cfg);
+        let d = actions::index_dry_run(&root_dir, &cfg);
         if a.json {
             let v = serde_json::json!({
-                "root": root_dir.display().to_string(),
-                "would_index": files.len(),
+                "root": d.root,
+                "would_index": d.would_index,
             });
             println!("{}", serde_json::to_string_pretty(&v)?);
         } else {
             eprintln!("Dry-run over {} ...", root_dir.display());
-            println!("Would index {} file(s) (nothing written)", files.len());
+            println!("Would index {} file(s) (nothing written)", d.would_index);
         }
         return Ok(());
     }
 
-    // Construction phase: exclusive lock for the whole build+write.
-    let _guard = phase::PhaseGuard::construction(&root_dir)?;
     eprintln!("Indexing {} ...", root_dir.display());
-    let idx = index::build(&root_dir, &cfg)?;
-    index::save(&root_dir, &idx)?;
+    let s = actions::build_index(&root_dir, &cfg)?;
 
-    let n_passages: usize = idx.documents.iter().map(|d| d.passages.len()).sum();
     if a.json {
         let v = serde_json::json!({
-            "root": root_dir.display().to_string(),
-            "documents": idx.documents.len(),
-            "passages": n_passages,
-            "scenes": idx.scenes.len(),
-            "identity_fingerprint": idx.identity.fingerprint,
+            "root": s.root,
+            "documents": s.documents,
+            "passages": s.passages,
+            "scenes": s.scenes,
+            "identity_fingerprint": s.identity_fingerprint,
         });
         println!("{}", serde_json::to_string_pretty(&v)?);
     } else {
         println!(
             "Indexed {} document(s), {} passage(s), {} scene(s) into {}",
-            idx.documents.len(),
-            n_passages,
-            idx.scenes.len(),
+            s.documents,
+            s.passages,
+            s.scenes,
             root::index_path(&root_dir).display()
         );
     }
@@ -167,32 +255,27 @@ fn cmd_index(a: IndexArgs) -> Result<()> {
 
 fn cmd_ask(a: AskArgs) -> Result<()> {
     let root_dir = root::detect_root(a.root.as_deref())?;
-    // Commitment phase: shared lock — never overlaps an exclusive index write.
-    let _guard = phase::PhaseGuard::commitment(&root_dir)?;
-    let idx = index::load(&root_dir)?;
-
-    let outcome = ask::run(&root_dir, &idx, &a.query, a.budget, &a.scenes)?;
+    let req = AskRequest::new(a.query.clone(), a.budget, a.scenes.clone());
 
     if a.dry_run {
         // Inv 3: a zero-act read-out emits no answer, only diagnostics; the
         // committed count is NOT incremented.
-        print!("{}", output::ask_dry_run(&outcome));
+        let d = actions::dry_run(&root_dir, &req)?;
+        print!("{}", output::ask_dry_run(&d.outcome));
         return Ok(());
     }
 
-    // Inv 2 + Inv 3: commit exactly one act after the search, before emitting
-    // the answer — "no answer without committing >=1 act".
-    let count = count::commit(&root_dir)?;
+    let r = actions::ask(&root_dir, &req)?;
 
     if a.json {
         println!(
             "{}",
-            output::ask_json(&outcome, a.budget, count, &idx.identity.fingerprint)
+            output::ask_json(&r.outcome, a.budget, r.count, &r.fingerprint)
         );
     } else {
         print!(
             "{}",
-            output::ask_human(&outcome, count, &idx.identity.fingerprint, a.flat)
+            output::ask_human(&r.outcome, r.count, &r.fingerprint, a.flat)
         );
     }
     Ok(())
@@ -200,10 +283,11 @@ fn cmd_ask(a: AskArgs) -> Result<()> {
 
 fn cmd_identity(a: RootArgs) -> Result<()> {
     let root_dir = root::detect_root(a.root.as_deref())?;
-    let idx = index::load(&root_dir)?;
     if a.json {
-        println!("{}", serde_json::to_string_pretty(&idx.identity)?);
+        let id = actions::identity(&root_dir)?;
+        println!("{}", serde_json::to_string_pretty(&id)?);
     } else {
+        let idx = actions::load_index(&root_dir)?;
         print!("{}", output::identity_human(&idx));
     }
     Ok(())
@@ -211,7 +295,7 @@ fn cmd_identity(a: RootArgs) -> Result<()> {
 
 fn cmd_count(a: RootArgs) -> Result<()> {
     let root_dir = root::detect_root(a.root.as_deref())?;
-    let c = count::read(&root_dir)?;
+    let c = actions::count(&root_dir)?;
     if a.json {
         println!("{}", serde_json::json!({ "committed_count": c }));
     } else {
@@ -222,140 +306,102 @@ fn cmd_count(a: RootArgs) -> Result<()> {
 
 fn cmd_scenes(a: RootArgs) -> Result<()> {
     let root_dir = root::detect_root(a.root.as_deref())?;
-    let idx = index::load(&root_dir)?;
+    let scenes = actions::scenes(&root_dir)?;
     if a.json {
-        let v: Vec<_> = idx
-            .scenes
+        let v: Vec<_> = scenes
             .iter()
             .map(|s| {
                 serde_json::json!({
                     "name": s.name,
-                    "documents": s.doc_ids.len(),
-                    "passages": s.stats.passage_count,
+                    "documents": s.documents,
+                    "passages": s.passages,
                 })
             })
             .collect();
         println!("{}", serde_json::to_string_pretty(&v)?);
     } else {
-        for s in &idx.scenes {
+        for s in &scenes {
             println!(
                 "{:24}  {} doc(s), {} passage(s)",
-                s.name,
-                s.doc_ids.len(),
-                s.stats.passage_count
+                s.name, s.documents, s.passages
             );
         }
     }
     Ok(())
 }
 
-/// `verify`: recompute the four invariants and report PASS/FAIL. Nonzero exit
-/// on any breach — a one-command conformance certificate.
-fn cmd_verify(a: RootArgs) -> Result<()> {
+/// `verify`: recompute the four invariants and report per-check status.
+///
+/// Exit contract:
+///
+///   0  every check passed and none was N/A
+///   1  at least one check FAILED — an invariant is breached
+///   2  no failures, but at least one check was NOT-APPLICABLE
+///
+/// Code 2 is the honest answer for a repo too degenerate to exercise the
+/// invariants: reporting 0 there would certify something never tested.
+/// `--allow-degenerate` maps 2 to 0 for callers who accept that.
+fn cmd_verify(a: VerifyArgs) -> Result<()> {
     let root_dir = root::detect_root(a.root.as_deref())?;
+    let rep = actions::verify(&root_dir);
+    let overall = rep.status();
 
-    // Inv 1: load() recomputes and asserts the fingerprint; success => PASS.
-    let (inv1, inv1_msg) = match index::load(&root_dir) {
-        Ok(idx) => {
-            let g = index::identity::build_self_graph(&idx.documents);
-            let chi = index::identity::char_invariant(&g);
-            let ok = chi >= idx.identity.floor && idx.identity.floor > 0.0;
-            (
-                ok,
-                format!(
-                    "fingerprint verified; chi={:.6} >= floor={:.2e}",
-                    chi, idx.identity.floor
-                ),
-            )
-        }
-        Err(e) => (false, format!("{e}")),
-    };
-
-    // Inv 2: count is readable and nonnegative (u64 — monotone by construction;
-    // there is no decrement path in the code).
-    let (inv2, inv2_msg) = match count::read(&root_dir) {
-        Ok(c) => (true, format!("committed count = {c}, no decrement path")),
-        Err(e) => (false, format!("{e}")),
-    };
-
-    // Inv 3: schema stores no answer/snippet bodies — passages carry term ids
-    // and line ranges only. Verified structurally by re-reading the raw index.
-    let (inv3, inv3_msg) = verify_no_answer_cache(&root_dir);
-
-    // Inv 4: the lock is acquirable (exclusive then released), proving the
-    // phase machinery is in place.
-    let (inv4, inv4_msg) = match phase::PhaseGuard::construction(&root_dir) {
-        Ok(_g) => (true, "construction/commitment lock operational".to_string()),
-        Err(e) => (false, format!("{e}")),
-    };
-
-    let all = inv1 && inv2 && inv3 && inv4;
     if a.json {
+        let inv = |r: &actions::InvariantReport| {
+            serde_json::json!({
+                "status": r.status().as_str(),
+                "pass": r.status() == actions::Status::Pass,
+                "checks": r.checks.iter().map(|c| serde_json::json!({
+                    "name": c.name,
+                    "status": c.status.as_str(),
+                    "detail": c.detail,
+                })).collect::<Vec<_>>(),
+            })
+        };
+        // `pass` stays at the top level, and stays strict, so existing parsers
+        // keep working across this release.
         let v = serde_json::json!({
-            "pass": all,
-            "inv1_identity": { "pass": inv1, "detail": inv1_msg },
-            "inv2_count": { "pass": inv2, "detail": inv2_msg },
-            "inv3_search_not_fetch": { "pass": inv3, "detail": inv3_msg },
-            "inv4_phases": { "pass": inv4, "detail": inv4_msg },
+            "pass": rep.pass(),
+            "overall": overall.as_str(),
+            "degeneracies": rep.degeneracies,
+            "inv1_identity": inv(&rep.inv1),
+            "inv2_count": inv(&rep.inv2),
+            "inv3_search_not_fetch": inv(&rep.inv3),
+            "inv4_phases": inv(&rep.inv4),
         });
         println!("{}", serde_json::to_string_pretty(&v)?);
     } else {
-        let mark = |b: bool| if b { "PASS" } else { "FAIL" };
-        println!("Inv 1 conserved identity     [{}] {}", mark(inv1), inv1_msg);
-        println!("Inv 2 never-resetting count  [{}] {}", mark(inv2), inv2_msg);
-        println!("Inv 3 search-not-fetch       [{}] {}", mark(inv3), inv3_msg);
-        println!("Inv 4 exclusive phases       [{}] {}", mark(inv4), inv4_msg);
-        println!("\noverall: {}", if all { "PASS" } else { "FAIL" });
+        for r in rep.invariants() {
+            println!("{:28} [{}]", r.title, r.status().as_str());
+            for c in &r.checks {
+                println!("  {:16} [{}] {}", c.name, c.status.as_str(), c.detail);
+            }
+        }
+        if !rep.degeneracies.is_empty() {
+            println!("\ndegenerate regimes (a PASS here would not be evidence):");
+            for d in &rep.degeneracies {
+                println!("  - {d}");
+            }
+        }
+        println!("\noverall: {}", overall.as_str());
+        if overall == actions::Status::NotApplicable {
+            // Note the wording covers both routes to N/A: a check that could
+            // not run, and a check that ran but only vacuously. Every mark
+            // above can read PASS and the verdict still be N/A — that is the
+            // degenerate case, and saying only "could not be run" here would
+            // leave it looking like a bug.
+            println!(
+                "\nThis repo is not verified — exiting 2. Either a check could not run, or\n\
+                 the corpus is too degenerate for one to be evidence (see above).\n\
+                 Pass --allow-degenerate to treat that as success."
+            );
+        }
     }
-    if all {
+
+    let code = rep.exit_code(a.allow_degenerate);
+    if code == 0 {
         Ok(())
     } else {
-        std::process::exit(1);
-    }
-}
-
-/// Structural Inv 3 check: the persisted index must contain no stored answer
-/// bodies. Passages hold `terms`/line ranges; we confirm no answer-bearing
-/// *field key* leaked into the schema. We parse the JSON and inspect object
-/// keys rather than scanning raw text — otherwise indexed source code that
-/// merely *mentions* "snippet"/"body" (e.g. spraypaint's own source) would
-/// trip a substring scan. The distinction matters: a value that contains the
-/// word is fine; a key that stores an answer is not.
-fn verify_no_answer_cache(root_dir: &std::path::Path) -> (bool, String) {
-    let path = root::index_path(root_dir);
-    let data = match std::fs::read_to_string(&path) {
-        Ok(d) => d,
-        Err(e) => return (false, format!("{e}")),
-    };
-    let value: serde_json::Value = match serde_json::from_str(&data) {
-        Ok(v) => v,
-        Err(e) => return (false, format!("parse: {e}")),
-    };
-    const BANNED_KEYS: &[&str] = &["snippet", "body", "answer", "cached", "text", "content"];
-    if let Some(bad) = find_banned_key(&value, BANNED_KEYS) {
-        return (false, format!("index leaks stored answers: object key '{bad}'"));
-    }
-    (
-        true,
-        "index stores no answer fields; snippets re-read at query time".to_string(),
-    )
-}
-
-/// Recursively search a JSON value for any object key in `banned`.
-fn find_banned_key(value: &serde_json::Value, banned: &[&str]) -> Option<String> {
-    match value {
-        serde_json::Value::Object(map) => {
-            for (k, v) in map {
-                if banned.iter().any(|b| b.eq_ignore_ascii_case(k)) {
-                    return Some(k.clone());
-                }
-                if let Some(found) = find_banned_key(v, banned) {
-                    return Some(found);
-                }
-            }
-            None
-        }
-        serde_json::Value::Array(arr) => arr.iter().find_map(|v| find_banned_key(v, banned)),
-        _ => None,
+        std::process::exit(code);
     }
 }

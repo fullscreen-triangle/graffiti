@@ -25,6 +25,27 @@ pub struct Result_ {
     pub snippet: String,
 }
 
+/// Per-scene score statistics over **every** scoring passage.
+///
+/// These exist because they cannot be recovered downstream. `results` carries
+/// only the *allocated* passages, so a consumer computing a median from it is
+/// taking the median of a top-k slice — a number that says more about the
+/// budget than about the scene. `best`/`median` here are taken from
+/// `per_scene_scored` before truncation, so they describe the scene.
+///
+/// `available` is the count of passages scoring **above zero for this query**,
+/// which is not the scene's passage count. The scene total is a property of the
+/// index, not of a query, and is reported by `scenes`.
+pub struct SceneStats {
+    pub scene: String,
+    pub allocated: usize,
+    pub available: usize,
+    /// Highest score in the scene, or `None` when nothing scored.
+    pub best: Option<f64>,
+    /// Median over all scoring passages (lower of the two middles when even).
+    pub median: Option<f64>,
+}
+
 /// Everything an `ask` produces — the results plus the diagnostics the
 /// blueprint exposes (price, per-scene allocation).
 pub struct AskOutcome {
@@ -35,6 +56,8 @@ pub struct AskOutcome {
     pub price: f64,
     /// (scene_name, allocated_count, available_count)
     pub allocation: Vec<(String, usize, usize)>,
+    /// Score distribution per scene, computed before truncation.
+    pub scene_stats: Vec<SceneStats>,
     pub results: Vec<Result_>,
 }
 
@@ -93,10 +116,29 @@ pub fn run(
     // Assemble results: each scene contributes its top per_scene[i] passages.
     let mut results = Vec::new();
     let mut allocation = Vec::new();
+    let mut scene_stats = Vec::new();
     for (i, scene) in scenes.iter().enumerate() {
         let take = alloc.per_scene[i];
         allocation.push((scene.name.clone(), take, per_scene_scored[i].len()));
-        for scored in per_scene_scored[i].iter().take(take) {
+
+        // Computed here, against the full list, because after the `take` below
+        // the tail is gone and this can never be recovered.
+        let all = &per_scene_scored[i];
+        scene_stats.push(SceneStats {
+            scene: scene.name.clone(),
+            allocated: take,
+            available: all.len(),
+            // `score_scene` returns descending order, so the head is the max and
+            // the midpoint is the median without a second sort.
+            best: all.first().map(|s| s.score),
+            median: if all.is_empty() {
+                None
+            } else {
+                Some(all[all.len() / 2].score)
+            },
+        });
+
+        for scored in all.iter().take(take) {
             let doc = &index.documents[scored.doc_id as usize];
             let snippet = read_snippet(root_dir, &doc.path, scored.start_line, scored.end_line);
             results.push(Result_ {
@@ -123,6 +165,7 @@ pub fn run(
         matched_term_ids,
         price: alloc.price,
         allocation,
+        scene_stats,
         results,
     })
 }

@@ -50,6 +50,18 @@ pub fn lock_path(root: &Path) -> PathBuf {
     spray_dir(root).join(".lock")
 }
 
+/// `<root>/.spraypaint/.count.lock`
+///
+/// Deliberately a *different* file from [`lock_path`]. A committing `ask`
+/// already holds the phase lock in SHARED mode; taking it EXCLUSIVE to
+/// serialise the counter would be a lock upgrade, which neither `flock` nor
+/// `LockFileEx` supports — it deadlocks or errors depending on platform. A
+/// distinct file composes: the phase lock keeps Inv 4, this one keeps Inv 2's
+/// read-modify-write atomic. Acquisition order is always phase-then-count.
+pub fn count_lock_path(root: &Path) -> PathBuf {
+    spray_dir(root).join(".count.lock")
+}
+
 /// `<root>/.spraypaint/scenes.toml`
 pub fn scenes_path(root: &Path) -> PathBuf {
     spray_dir(root).join("scenes.toml")

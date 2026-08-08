@@ -1,0 +1,227 @@
+# Release pipeline for the `spraypaint` CLI.
+#
+# Deliberately separate from ci.yml, which builds a different project in this
+# repository and never mentions spraypaint. Keeping them apart means a change to
+# either cannot break the other's triggers.
+#
+# The tag is prefixed `spraypaint-v` so it cannot collide with a graffiti
+# release tag in the same repository.
+name: spraypaint release
+
+on:
+  push:
+    tags: ["spraypaint-v*"]
+  # Dry runs: build every target and upload artifacts without cutting a
+  # release. Use this before trusting a real tag.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # The UI is built exactly once and shared by every target. Building it per
+  # matrix leg would let five binaries embed five subtly different asset sets
+  # (npm resolution is not bit-reproducible across runners), so a bug reported
+  # against the macOS build might not exist in the Linux one.
+  ui:
+    name: build web UI
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: spraypaint-web/spraypaint-web/package-lock.json
+
+      # `npm ci` not `npm install`: it installs exactly the lockfile and fails
+      # if package.json and the lock disagree, rather than quietly resolving
+      # something new into a binary we are about to sign nothing for.
+      - name: Install and export
+        working-directory: spraypaint-web/spraypaint-web
+        run: |
+          npm ci
+          npm run export
+
+      # Fail here rather than shipping a UI-less binary. `next build` can exit 0
+      # having written nothing useful if the export config regresses.
+      - name: Verify the export produced a UI
+        working-directory: spraypaint-web/spraypaint-web
+        run: |
+          test -f out/index.html || { echo "::error::out/index.html missing — static export did not run"; exit 1; }
+          echo "exported $(find out -type f | wc -l) files, $(du -sh out | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-dist
+          path: spraypaint-web/spraypaint-web/out/
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    name: ${{ matrix.target }}
+    needs: ui
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Do not cancel four good targets because one failed — knowing whether a
+      # break is platform-specific is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        include:
+          # ubuntu-22.04 is pinned, not `latest`: the runner label determines
+          # the glibc floor of the artifact. Drifting to a newer image would
+          # silently raise it and break users on older distributions.
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+            ext: tar.gz
+          # Static musl build for Alpine, containers, and old glibc. Slower
+          # than gnu, but it runs where gnu will not.
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-22.04
+            ext: tar.gz
+            packages: musl-tools
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            ext: tar.gz
+          - target: x86_64-apple-darwin
+            runner: macos-13
+            ext: tar.gz
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            ext: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install target packages
+        if: matrix.packages != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # `workspaces: spraypaint` is required. The crate declares an empty
+      # [workspace] to detach from the graffiti root, so the action's default
+      # detection would key the cache on the wrong manifest and never hit.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: spraypaint
+          key: ${{ matrix.target }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ui-dist
+          path: spraypaint/ui/dist/
+
+      # `#[folder = "ui/dist/"]` is resolved at compile time. If the download
+      # silently landed elsewhere, the build would still succeed and produce a
+      # binary whose `GET /` returns the no-UI notice — a defect that only shows
+      # up when a user opens the browser. Check before compiling, not after.
+      - name: Verify the UI landed where rust-embed will look
+        shell: bash
+        run: |
+          test -f spraypaint/ui/dist/index.html || { echo "::error::spraypaint/ui/dist/index.html missing — the binary would embed no UI"; exit 1; }
+
+      # `--locked` fails on a stale Cargo.lock instead of resolving newer
+      # versions. A release should build the dependency set that was tested.
+      - name: Build
+        working-directory: spraypaint
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      # Meaningful even with an embedded UI: the debug tables are a large share
+      # of an unstripped binary, and the embedded assets are not stripped away.
+      - name: Strip
+        if: runner.os != 'Windows'
+        working-directory: spraypaint
+        run: strip target/${{ matrix.target }}/release/spraypaint
+
+      # A tag that disagrees with Cargo.toml produces an archive whose filename
+      # lies about its contents, and `spraypaint --version` then contradicts the
+      # release page. Cheaper to fail here than to yank a release.
+      - name: Check the tag matches Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        working-directory: spraypaint
+        run: |
+          manifest=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          tag="${GITHUB_REF_NAME#spraypaint-v}"
+          if [ "$manifest" != "$tag" ]; then
+            echo "::error::tag $GITHUB_REF_NAME implies version $tag but Cargo.toml says $manifest"
+            exit 1
+          fi
+          echo "version $manifest"
+
+      - name: Package
+        id: package
+        shell: bash
+        working-directory: spraypaint
+        run: |
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          name="spraypaint-${version}-${{ matrix.target }}"
+          mkdir -p "dist/$name"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/spraypaint.exe" "dist/$name/"
+          else
+            cp "target/${{ matrix.target }}/release/spraypaint" "dist/$name/"
+          fi
+          cp README.md "dist/$name/"
+          cd dist
+          if [ "${{ matrix.ext }}" = "zip" ]; then
+            7z a "${name}.zip" "$name" > /dev/null
+          else
+            tar czf "${name}.tar.gz" "$name"
+          fi
+          echo "archive=spraypaint/dist/${name}.${{ matrix.ext }}" >> "$GITHUB_OUTPUT"
+
+      # Smoke test: an archive containing a binary that cannot start is worse
+      # than a failed build, because it reaches users. Skipped when the runner
+      # cannot execute the artifact it just produced.
+      - name: Smoke test the built binary
+        if: matrix.target != 'x86_64-unknown-linux-musl'
+        shell: bash
+        working-directory: spraypaint
+        run: |
+          bin="target/${{ matrix.target }}/release/spraypaint"
+          [ "${{ runner.os }}" = "Windows" ] && bin="${bin}.exe"
+          "$bin" --version
+          "$bin" --help > /dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive-${{ matrix.target }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: build
+    # Only a real tag publishes. workflow_dispatch stops after `build`, leaving
+    # downloadable artifacts to inspect without creating a public release.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: archive-*
+          path: dist/
+          merge-multiple: true
+
+      # Computed in one place over the final archives. The install scripts abort
+      # on a hash mismatch, so this file is the thing that makes the curl-to-sh
+      # install verifiable rather than merely convenient.
+      - name: Generate SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

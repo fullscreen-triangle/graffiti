@@ -4,16 +4,33 @@
 
 [package]
 name = "spraypaint"
-version = "0.1.0"
+# 0.2.0 is a breaking release: `verify` gained exit code 2 for not-applicable,
+# so a degenerate repository that printed PASS and exited 0 now exits 2. Nothing
+# regressed — those repositories were never actually verified — but a pipeline
+# gating on the exit code will notice. `--allow-degenerate` maps 2 back to 0.
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Kundai Farai Sachikonye <kundai.sachikonye@bitspark.com>"]
 license = "MIT OR Apache-2.0"
 description = "Split-attention full-text search: BM25 within scenes, water-filling across them. A faithful runtime for the four blueprint invariants of the Split-Attention Synchronised Agents calculus."
 
+# The library holds every operation that touches the index, the lock, or the
+# committed count (`actions`), so the CLI and `spraypaint serve` share one
+# invariant-critical ordering rather than two that can drift apart.
+[lib]
+name = "spraypaint"
+path = "src/lib.rs"
+
 [[bin]]
 name = "spraypaint"
 path = "src/main.rs"
+
+# `serve` is default-on so `cargo install --path spraypaint` keeps working as
+# the README documents. CLI-only users pass `--no-default-features`.
+[features]
+default = ["serve"]
+serve = ["dep:tiny_http", "dep:rust-embed"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -25,6 +42,16 @@ ignore = "0.4"
 fs2 = "0.4"
 blake3 = "1"
 unicode-segmentation = "1"
+
+# `tiny_http`, not axum. Every action holds a *blocking* fs2 file lock, so an
+# async runtime would need `spawn_blocking` around every handler to avoid
+# parking a worker on a flock — all of async's complexity, none of its benefit.
+# It also keeps the tree small, which is what makes cross-compiling five targets
+# reliable. No TLS feature: loopback only, and a TLS dep is the single most
+# common cross-build failure.
+tiny_http = { version = "0.12", optional = true }
+# `debug-embed` so a debug `serve` picks up UI rebuilds without a cargo rebuild.
+rust-embed = { version = "8", optional = true, features = ["debug-embed"] }
 
 [profile.release]
 lto = "thin"

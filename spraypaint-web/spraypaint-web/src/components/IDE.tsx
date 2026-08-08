@@ -1,311 +1,223 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
-import { FILE_TREE } from "@/data/samples";
-import FileExplorer from "./FileExplorer";
-import CodeEditor from "./CodeEditor";
+// The shell. Two panes: results on the left, charts on the right.
+//
+// The three-column IDE this replaces (file explorer → `.grf` editor → charts)
+// existed to author a script language nothing parses. There is no file tree to
+// browse — the corpus is whatever `spraypaint index` walked — and no document to
+// edit. A query is four values, so `QueryBar` holds them and the space goes to
+// the passages, which are what the tool actually produces.
+//
+// The 800ms `setTimeout` that used to wrap "execution" is gone too: real
+// requests take as long as they take, and faking a delay on top of a real one
+// only makes the tool feel slower than it is.
+
+import { useCallback, useEffect, useState } from "react";
+
+import IdentityBadge from "./IdentityBadge";
 import OutputPanel from "./OutputPanel";
-import {
-  ExecutionState,
-  ScriptDiff,
-  applyDiff,
-  executeScript,
-} from "@/lib/engine";
-import { UndoStack } from "@/lib/undo";
-import {
-  VscPlay,
-  VscDebugStop,
-  VscDiscard,
-  VscRedo,
-  VscTerminal,
-  VscSettingsGear,
-} from "react-icons/vsc";
+import QueryBar from "./QueryBar";
+import ResultsList from "./ResultsList";
+import { api, ApiError, type IndexStatus } from "@/lib/api";
+import { useSpraypaintSession } from "@/hooks/useSpraypaintSession";
 
 export default function IDE() {
-  const [activeFile, setActiveFile] = useState<string | null>("prompt.grf");
-  const [code, setCode] = useState(
-    FILE_TREE[0]?.children?.[0]?.children?.[0]?.content ?? ""
-  );
-  const [execState, setExecState] = useState<ExecutionState | null>(null);
-  const [pendingDiff, setPendingDiff] = useState<ScriptDiff | null>(null);
-  const [running, setRunning] = useState(false);
-  const [col1Width, setCol1Width] = useState(200);
-  const [col2Ratio, setCol2Ratio] = useState(0.45); // fraction of remaining space
-  const undoStackRef = useRef(new UndoStack());
+  const s = useSpraypaintSession();
+  const [split, setSplit] = useState(0.52);
+  const [indexJob, setIndexJob] = useState<IndexStatus | null>(null);
 
-  // file selection
-  const handleFileSelect = useCallback(
-    (name: string, content: string) => {
-      setActiveFile(name);
-      setCode(content);
-      setPendingDiff(null);
-      // mark results as stale since script changed
-      setExecState((prev) =>
-        prev ? { ...prev, stale: true } : null
-      );
-      undoStackRef.current.push({
-        script: content,
-        timestamp: Date.now(),
-        source: "editor",
-        description: `Opened ${name}`,
+  const onBudget = useCallback(
+    (budget: number) => s.gesture({ kind: "set-budget", budget }, { debounce: true }),
+    [s]
+  );
+
+  const onReverify = useCallback(async () => {
+    try {
+      s.setVerify(await api.verify());
+    } catch {
+      // `/api/verify` answers 200 even for a breach, so a throw here means the
+      // server is unreachable — `refreshContext` reports that condition.
+      void s.refreshContext();
+    }
+  }, [s]);
+
+  // Poll only while a build is actually running.
+  useEffect(() => {
+    if (!indexJob?.running) return;
+    const t = setInterval(async () => {
+      try {
+        const st = await api.indexStatus();
+        setIndexJob(st);
+        if (!st.running) void s.refreshContext();
+      } catch {
+        setIndexJob(null);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [indexJob?.running, s]);
+
+  const startIndex = useCallback(async () => {
+    try {
+      // The 202 body carries only `{status}` — not `running` or `detail`. Read
+      // the status endpoint for the full shape rather than filling in the two
+      // missing fields with guesses.
+      await api.startIndex();
+      setIndexJob(await api.indexStatus());
+    } catch (e) {
+      setIndexJob({
+        status: "failed",
+        running: false,
+        detail: e instanceof ApiError ? e.message : String(e),
       });
-    },
-    []
-  );
-
-  // code changes from editor
-  const handleCodeChange = useCallback(
-    (newCode: string) => {
-      setCode(newCode);
-      setPendingDiff(null);
-      setExecState((prev) =>
-        prev ? { ...prev, stale: true } : null
-      );
-      // debounce undo push
-      undoStackRef.current.push({
-        script: newCode,
-        timestamp: Date.now(),
-        source: "editor",
-        description: "Manual edit",
-      });
-    },
-    []
-  );
-
-  // crossfilter: chart interaction → script diff → auto-apply
-  const handleCrossfilter = useCallback(
-    (diff: ScriptDiff) => {
-      const newCode = applyDiff(code, diff);
-      if (newCode === code) return; // diff didn't match anything
-
-      setCode(newCode);
-      setPendingDiff(diff);
-      setExecState((prev) =>
-        prev ? { ...prev, stale: true } : null
-      );
-      undoStackRef.current.push({
-        script: newCode,
-        timestamp: Date.now(),
-        source: "crossfilter",
-        description: diff.description,
-      });
-
-      // clear the diff highlight after a moment
-      setTimeout(() => setPendingDiff(null), 3000);
-    },
-    [code]
-  );
-
-  // run script
-  const handleRun = useCallback(() => {
-    setRunning(true);
-    // simulate execution delay
-    setTimeout(() => {
-      const result = executeScript(code, execState ?? undefined);
-      setExecState(result);
-      setPendingDiff(null);
-      setRunning(false);
-    }, 800);
-  }, [code, execState]);
-
-  // undo / redo
-  const handleUndo = useCallback(() => {
-    const entry = undoStackRef.current.undo();
-    if (entry) {
-      setCode(entry.script);
-      setExecState((prev) =>
-        prev ? { ...prev, stale: true } : null
-      );
     }
   }, []);
 
-  const handleRedo = useCallback(() => {
-    const entry = undoStackRef.current.redo();
-    if (entry) {
-      setCode(entry.script);
-      setExecState((prev) =>
-        prev ? { ...prev, stale: true } : null
-      );
-    }
-  }, []);
+  // Column drag.
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    if (!dragging) return;
+    const move = (e: MouseEvent) =>
+      setSplit(Math.max(0.25, Math.min(0.75, e.clientX / window.innerWidth)));
+    const up = () => setDragging(false);
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+  }, [dragging]);
 
-  // keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        handleUndo();
-      }
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        (e.key === "y" || (e.key === "z" && e.shiftKey))
-      ) {
+        s.undo();
+      } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
         e.preventDefault();
-        handleRedo();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        s.redo();
+      } else if (e.key === "Enter") {
         e.preventDefault();
-        handleRun();
+        void s.run();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleUndo, handleRedo, handleRun]);
+  }, [s]);
 
-  // column resizing
-  const draggingRef = useRef<"col1" | "col2" | null>(null);
-
-  const handleMouseDown = useCallback(
-    (col: "col1" | "col2") => (e: React.MouseEvent) => {
-      e.preventDefault();
-      draggingRef.current = col;
-    },
-    []
-  );
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!draggingRef.current) return;
-      if (draggingRef.current === "col1") {
-        setCol1Width(Math.max(140, Math.min(400, e.clientX)));
-      } else {
-        const remaining = window.innerWidth - col1Width;
-        const editorX = e.clientX - col1Width;
-        setCol2Ratio(Math.max(0.2, Math.min(0.7, editorX / remaining)));
-      }
-    };
-    const handleMouseUp = () => {
-      draggingRef.current = null;
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [col1Width]);
-
-  const remaining = `calc(100vw - ${col1Width}px)`;
-  const col2Width = `calc(${remaining} * ${col2Ratio})`;
-  const col3Width = `calc(${remaining} * ${1 - col2Ratio})`;
+  const noIndex = s.health !== null && !s.health.has_index;
+  const unreachable = s.error?.code === "unreachable";
 
   return (
-    <div className="h-screen flex flex-col bg-[#1e1e1e] text-[#cccccc] overflow-hidden select-none">
-      {/* ── Title Bar ── */}
-      <div className="h-[30px] bg-[#323233] flex items-center px-3 gap-3 text-[12px] text-[#cccccc] shrink-0 border-b border-[#1e1e1e]">
-        <span className="font-semibold tracking-wide text-[#4fc1ff]">
-          spraypaint
+    <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-neutral-200">
+      <div className="flex h-[30px] shrink-0 items-center gap-3 border-b border-neutral-800 bg-neutral-900 px-3 text-xs">
+        <span className="font-semibold tracking-wide text-sky-400">spraypaint</span>
+        <span className="text-neutral-600">
+          {s.health?.root ?? "—"}
         </span>
-        <span className="text-[#858585]">—</span>
-        <span className="text-[#858585]">
-          semantic causal propagation
-        </span>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={handleUndo}
-            className="p-1 hover:bg-[#ffffff15] rounded"
-            title="Undo (Ctrl+Z)"
-          >
-            <VscDiscard className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleRedo}
-            className="p-1 hover:bg-[#ffffff15] rounded"
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <VscRedo className="w-3.5 h-3.5" />
-          </button>
-          <div className="w-px h-3 bg-[#555]" />
-          <button
-            onClick={handleRun}
-            disabled={running}
-            className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[12px] font-medium transition-colors ${
-              running
-                ? "bg-[#555] text-[#999] cursor-wait"
-                : "bg-[#89d185] text-[#1e1e1e] hover:bg-[#9bdb97]"
-            }`}
-            title="Run (Ctrl+Enter)"
-          >
-            {running ? (
-              <>
-                <VscDebugStop className="w-3.5 h-3.5" />
-                executing…
-              </>
-            ) : (
-              <>
-                <VscPlay className="w-3.5 h-3.5" />
-                Run
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Main Content ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Column 1: File Explorer */}
-        <div style={{ width: col1Width }} className="shrink-0">
-          <FileExplorer
-            tree={FILE_TREE}
-            activeFile={activeFile}
-            onSelect={handleFileSelect}
-          />
-        </div>
-
-        {/* Resize handle */}
-        <div
-          className="w-[3px] bg-[#1e1e1e] hover:bg-[#007acc] cursor-col-resize transition-colors shrink-0"
-          onMouseDown={handleMouseDown("col1")}
-        />
-
-        {/* Column 2: Code Editor */}
-        <div style={{ width: col2Width }} className="shrink-0">
-          <CodeEditor
-            code={code}
-            onChange={handleCodeChange}
-            fileName={activeFile}
-            pendingDiff={pendingDiff}
-            stale={execState?.stale ?? false}
-          />
-        </div>
-
-        {/* Resize handle */}
-        <div
-          className="w-[3px] bg-[#1e1e1e] hover:bg-[#007acc] cursor-col-resize transition-colors shrink-0"
-          onMouseDown={handleMouseDown("col2")}
-        />
-
-        {/* Column 3: Output Panel */}
-        <div style={{ width: col3Width }} className="min-w-0">
-          <OutputPanel state={execState} onCrossfilter={handleCrossfilter} />
-        </div>
-      </div>
-
-      {/* ── Status Bar ── */}
-      <div className="h-[22px] bg-[#007acc] flex items-center px-3 gap-4 text-[11px] text-white shrink-0">
-        <span className="flex items-center gap-1">
-          <VscTerminal className="w-3 h-3" />
-          GRF
-        </span>
-        {execState && (
-          <>
-            <span>
-              M = {execState.invariants.committedCount}
-            </span>
-            <span>
-              {execState.seeks.length} seek{execState.seeks.length !== 1 ? "s" : ""}
-            </span>
-            <span>
-              {execState.scenes.filter((s) => s.allocated > 0).length} active scenes
-            </span>
-          </>
+        {s.health?.version && (
+          <span className="font-mono text-[10px] text-neutral-600">v{s.health.version}</span>
         )}
+        <span className="ml-auto flex items-center gap-2 text-[11px] text-neutral-500">
+          {s.running && <span className="text-sky-400">running…</span>}
+          {s.stale && !s.running && (
+            <span className="text-amber-500">query changed — results are from a previous run</span>
+          )}
+        </span>
+      </div>
+
+      {unreachable && (
+        <div className="border-b border-red-900/60 bg-red-950/30 px-4 py-2 text-xs text-red-300">
+          {s.error?.message}
+        </div>
+      )}
+
+      {noIndex && (
+        <div className="flex items-center gap-3 border-b border-amber-900/50 bg-amber-950/20 px-4 py-2 text-xs text-amber-200">
+          <span>No index in this repository.</span>
+          {s.health?.allow_index ? (
+            <button
+              onClick={startIndex}
+              disabled={indexJob?.running}
+              className="rounded border border-amber-700 px-2 py-0.5 text-[11px] hover:bg-amber-900/40 disabled:text-amber-700"
+            >
+              {indexJob?.running ? "Indexing…" : "Build index"}
+            </button>
+          ) : (
+            // Indexing takes a blocking exclusive lock, so the server refuses it
+            // unless explicitly permitted. Naming the flag is the whole message.
+            <span className="font-mono text-[11px] text-amber-400/80">
+              run <span className="text-amber-200">spraypaint index</span>, or restart the
+              server with <span className="text-amber-200">--allow-index</span>
+            </span>
+          )}
+          {indexJob?.detail && (
+            <span className="font-mono text-[11px] text-amber-400/70">{indexJob.detail}</span>
+          )}
+        </div>
+      )}
+
+      {s.error && !unreachable && !noIndex && (
+        <div className="border-b border-red-900/60 bg-red-950/30 px-4 py-2 text-xs text-red-300">
+          <span className="font-mono text-red-400">{s.error.code}</span> — {s.error.message}
+        </div>
+      )}
+
+      <IdentityBadge identity={s.identity} result={s.result} count={s.count} />
+
+      <QueryBar
+        query={s.query}
+        scenes={s.scenes}
+        running={s.running}
+        canUndo={s.canUndo}
+        canRedo={s.canRedo}
+        onGesture={s.gesture}
+        onRun={() => void s.run()}
+        onUndo={s.undo}
+        onRedo={s.redo}
+      />
+
+      <div className="flex min-h-0 flex-1">
+        <div style={{ width: `${split * 100}%` }} className="min-w-0">
+          <ResultsList result={s.result} query={s.query} stale={s.stale} />
+        </div>
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          className="w-[3px] shrink-0 cursor-col-resize bg-neutral-800 transition-colors hover:bg-sky-600"
+        />
+        <div style={{ width: `${(1 - split) * 100}%` }} className="min-w-0">
+          <OutputPanel
+            result={s.result}
+            query={s.query}
+            identity={s.identity}
+            scenes={s.scenes}
+            verify={s.verify}
+            count={s.count}
+            stale={s.stale}
+            running={s.running}
+            onBudget={onBudget}
+            onReverify={onReverify}
+          />
+        </div>
+      </div>
+
+      <div className="flex h-[22px] shrink-0 items-center gap-4 bg-sky-800 px-3 text-[11px] text-white">
+        <span>{s.scenes.length} scene{s.scenes.length === 1 ? "" : "s"}</span>
+        <span>
+          {s.scenes.reduce((n, x) => n + x.passages, 0)} passages indexed
+        </span>
+        {s.count !== null && <span>M = {s.count}</span>}
         <span className="ml-auto">
-          {execState?.stale
-            ? "⚠ script modified — results stale"
-            : execState
-            ? "✓ results current"
-            : "ready"}
+          {/* The distinction the whole session hook exists to preserve. */}
+          {s.result === null
+            ? "ready"
+            : s.result.dry_run
+              ? "preview — not committed"
+              : "committed"}
         </span>
       </div>
     </div>

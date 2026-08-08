@@ -137,3 +137,14 @@ keys.json
 # spraypaint (split-attention search tool)
 /spraypaint/target/
 .spraypaint/
+
+# The exported UI embedded into the binary is a build artifact, covered by the
+# `**/dist/` rule above — CI rebuilds it in the `ui` job and drops it here before
+# `cargo build`. But `#[folder = "ui/dist/"]` in src/ui.rs is resolved at compile
+# time, so the directory must exist in a fresh clone or the crate does not build
+# at all. Un-ignore just the marker file. Un-ignoring the directory first is
+# required: git will not descend into an excluded directory to find the
+# exception inside it.
+!/spraypaint/ui/dist/
+/spraypaint/ui/dist/*
+!/spraypaint/ui/dist/.gitkeep

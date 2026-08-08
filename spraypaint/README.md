@@ -10,10 +10,62 @@ returns a ranked context slice instead of the agent reading whole files.
 
 ## Install
 
+A single self-contained executable — no Rust toolchain, no Node, no runtime
+dependencies. The web UI is compiled into it.
+
+**macOS / Linux:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/fullscreen-triangle/graffiti/main/spraypaint/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/fullscreen-triangle/graffiti/main/spraypaint/install.ps1 | iex
+```
+
+Both scripts verify the download against the published `SHA256SUMS` and abort on
+mismatch. They install to `~/.local/bin` and `%LOCALAPPDATA%\spraypaint\bin`
+respectively — user scope only, no administrator rights. Set
+`SPRAYPAINT_INSTALL_DIR` to override.
+
+Or download an archive directly from
+[Releases](https://github.com/fullscreen-triangle/graffiti/releases) and put the
+binary on your `PATH`.
+
+The binaries are unsigned, so the first run triggers a warning: SmartScreen on
+Windows ("More info" → "Run anyway"), Gatekeeper on macOS. On macOS you can
+clear the quarantine attribute instead:
+
+```sh
+xattr -d com.apple.quarantine ~/.local/bin/spraypaint
+```
+
+**From source**, if you have a Rust toolchain:
+
 ```bash
 cargo install --path spraypaint --force   # from the graffiti repo root
 spraypaint --version
 ```
+
+That build embeds whatever is in `spraypaint/ui/dist/`, which is empty in a
+fresh clone — `serve` still runs and serves the JSON API, but `GET /` returns a
+plain-text notice rather than the UI. To get the interface too, build it first:
+
+```bash
+cd spraypaint-web/spraypaint-web && npm ci && npm run build
+cp -r out/* ../../spraypaint/ui/dist/
+```
+
+Pass `--no-default-features` for a CLI-only binary with no HTTP server.
+
+Releases are cut by pushing a `spraypaint-v<version>` tag, which runs
+`.github/workflows/spraypaint-release.yml`: it exports the UI **once** and
+embeds that same build into all five targets, so a bug reproduced on one
+platform is not an artifact of a differently-resolved asset bundle on another.
+The workflow fails rather than publishing if the tag disagrees with
+`Cargo.toml` or if the UI is missing from `ui/dist/` at compile time.
 
 ## Use: index once, ask many times
 
@@ -38,7 +90,29 @@ rest. `--flat` ranks globally by score instead.
 | `spraypaint identity [--json]` | The conserved identity fingerprint + χ (Inv 1). |
 | `spraypaint count [--json]` | The monotone committed count (Inv 2). |
 | `spraypaint scenes [--json]` | Detected/overridden scenes. |
-| `spraypaint verify [--json]` | Re-check all four invariants; nonzero exit on breach. |
+| `spraypaint verify [--json] [--allow-degenerate]` | Re-check all four invariants. See the exit contract below. |
+| `spraypaint serve [--port N] [--host H] [--open] [--allow-index]` | Serve the JSON API and the embedded web UI on loopback. |
+
+### `verify` exit codes
+
+| Exit | Meaning |
+|---|---|
+| `0` | Every check passed and every check applied. |
+| `1` | At least one check **failed** — a real breach. |
+| `2` | Nothing failed, but at least one check was **not applicable**. |
+
+Exit 2 is new in 0.2.0 and is the one thing in this release that can turn a
+green pipeline red. It fires on *degenerate* repositories — an empty index, a
+single document, a single scene, or a corpus whose documents share no vocabulary
+at all. In those regimes a check does not have enough structure to discriminate
+against, so reporting PASS would overclaim: the check did not pass, it did not
+run. Nothing has regressed in such a repository; it was simply never verified in
+the first place, and now says so.
+
+Pass `--allow-degenerate` to map `2 → 0` if that is the intended reading for
+your corpus. The JSON output keeps its top-level `pass` boolean, so parsers
+written against 0.1 keep working; `overall`, `degeneracies[]`, and per-check
+`status`/`detail` are additive.
 
 ## Scenes
 
@@ -71,7 +145,36 @@ all `k` slots unless its passages genuinely out-score the others.
 4. **Exclusive phases** — `index` (construction) holds an exclusive lock; `ask`
    (commitment) a shared one; they never overlap.
 
-Run `spraypaint verify` for a one-command conformance certificate.
+Run `spraypaint verify` for a one-command conformance certificate — read its
+exit code, not just its output, and read the degeneracy list before treating a
+pass as evidence.
+
+## The web interface
+
+`spraypaint serve` binds `127.0.0.1:7373` and serves both the JSON API and a web
+UI compiled into the executable. No Node, no network, no install step beyond the
+binary itself:
+
+```
+spraypaint serve --open
+```
+
+The UI is a view over the same `actions::*` calls the CLI makes, so it cannot
+show a number the CLI would not. Two properties are worth knowing because they
+are load-bearing rather than cosmetic:
+
+- **Interactive changes preview; only an explicit Run commits.** Dragging the
+  budget slider calls `/api/dry-run`, which returns allocation and price without
+  incrementing the committed count. The count is monotone with no decrement
+  path, so a UI that committed on every drag would inflate it irreversibly.
+- **The server is loopback-only and checks the `Host` header**, rejecting
+  anything else with 421. That is what stops a web page you happen to be
+  visiting from querying your local index via DNS rebinding — binding to
+  127.0.0.1 alone does *not* prevent it.
+
+Serving on a non-loopback address is possible but requires a second explicit
+flag, because the server reads arbitrary file content, has no authentication,
+and lets anyone who can reach it irreversibly inflate your count.
 
 ## Notes
 

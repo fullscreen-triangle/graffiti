@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+// KaTeX is gone: the only math in this UI was in the old ReportTab, which
+// described a `.grf` execution the binary never performs. Its stylesheet dragged
+// 1.08 MB of webfonts into an export that ships inside the executable.
 import "./globals.css";
 
 export const metadata: Metadata = {
