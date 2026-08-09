@@ -358,7 +358,7 @@ spraypaint index                       # writes .spraypaint/index.json  (add to 
 spraypaint ask "how is auth handled"   # ranked passages, grouped by scene
 spraypaint ask "retry backoff" -k 20   # widen the budget
 spraypaint ask "parser" --scenes src,tests   # restrict to scenes
-spraypaint ask "parser" --flat         # one global ranked order
+spraypaint ask "parser" --flat         # same passages, printed in one ranked order
 ```
 
 **Scenes** are auto-detected top-level directories at index time; override them

@@ -79,7 +79,13 @@ spraypaint ask "identity" --scenes crates,docs   # restrict to named scenes
 ```
 
 `ask` returns passages grouped by scene, so a dense area cannot crowd out the
-rest. `--flat` ranks globally by score instead.
+rest. `--flat` prints that same set in one globally descending order instead of
+grouped under scene headings.
+
+`--flat` is a **presentation** flag, not a second retrieval mode: which passages
+come back is always decided by water-filling, so a flat listing and a grouped
+one contain exactly the same passages. There is no "global top-k" mode to
+compare against — the allocator *is* the retrieval rule.
 
 ## Commands
 

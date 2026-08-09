@@ -261,7 +261,18 @@ fn cmd_ask(a: AskArgs) -> Result<()> {
         // Inv 3: a zero-act read-out emits no answer, only diagnostics; the
         // committed count is NOT incremented.
         let d = actions::dry_run(&root_dir, &req)?;
-        print!("{}", output::ask_dry_run(&d.outcome));
+        // `--json` applies to the dry-run branch too. Honouring it only on the
+        // committed branch would make `--dry-run --json` silently emit human
+        // text: a machine consumer scripting a budget sweep gets a parse error
+        // on the one path that exists so it can sweep *without* committing.
+        if a.json {
+            println!(
+                "{}",
+                output::ask_dry_run_json(&d.outcome, a.budget, &d.fingerprint)
+            );
+        } else {
+            print!("{}", output::ask_dry_run(&d.outcome));
+        }
         return Ok(());
     }
 
