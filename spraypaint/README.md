@@ -98,6 +98,7 @@ compare against — the allocator *is* the retrieval rule.
 | `spraypaint scenes [--json]` | Detected/overridden scenes. |
 | `spraypaint verify [--json] [--allow-degenerate]` | Re-check all four invariants. See the exit contract below. |
 | `spraypaint serve [--port N] [--host H] [--open] [--allow-index]` | Serve the JSON API and the embedded web UI on loopback. |
+| `spraypaint serve --pair <ORIGIN>` | Additionally authorise a hosted copy of the UI at ORIGIN, via a printed token. |
 
 ### `verify` exit codes
 
@@ -181,6 +182,39 @@ are load-bearing rather than cosmetic:
 Serving on a non-loopback address is possible but requires a second explicit
 flag, because the server reads arbitrary file content, has no authentication,
 and lets anyone who can reach it irreversibly inflate your count.
+
+### Pairing a hosted copy of the UI
+
+`serve --open` is the path with no caveats, and if it works for you, use it. But
+the UI is also deployed as a static page, and `--pair` lets that page drive the
+binary on *your* machine — nothing is uploaded, and the search still runs
+locally:
+
+```
+spraypaint serve --pair https://acrylic-spray-paint-inky.vercel.app
+```
+
+This prints a token. Paste it into the page's pairing form together with the
+server URL, and the page becomes a front-end for your local binary.
+
+Pairing deliberately gives up the same-origin assumption the rest of the server
+rests on, so a **bearer token** replaces it as the control:
+
+- exactly one origin is authorised — the one named on the command line, matched
+  in full, so a lookalike host is still rejected with 403;
+- every `/api/*` request must carry `Authorization: Bearer <token>`, compared in
+  constant time; a leaked token from the wrong origin still gets nothing;
+- the token is 160 bits from the OS CSPRNG, exists only in that process, and
+  never touches disk. Stopping the server revokes it; restarting mints a new one.
+
+Two browser limits are worth knowing before you try, because both surface as the
+same unhelpful "failed to fetch":
+
+- **Chrome 142+ asks permission** the first time an HTTPS page reaches your local
+  network. Choose Allow; dismissing it fails the request.
+- **Safari cannot do this at all.** WebKit forbids HTTPS pages from reaching
+  `http://127.0.0.1` and offers no prompt. There is no server-side fix — use
+  `serve --open` instead.
 
 ## Notes
 

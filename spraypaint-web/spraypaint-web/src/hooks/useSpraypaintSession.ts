@@ -14,12 +14,12 @@
 // of use. `dryRun` returns the same shape with `committed_count` absent, so the
 // UI can show a full preview without asserting an act that did not happen.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  api,
   ApiError,
   DEFAULT_QUERY,
+  makeApi,
   type AskQuery,
   type AskResponse,
   type Health,
@@ -27,6 +27,7 @@ import {
   type SceneInfo,
   type VerifyResponse,
 } from "@/lib/api";
+import { SAME_ORIGIN, type Connection } from "@/lib/connection";
 import { applyGesture, describeGesture, isRunnable, sameRequest, type Gesture } from "@/lib/gestures";
 import { UndoStack } from "@/lib/undo";
 
@@ -51,7 +52,11 @@ export interface SessionState {
   canRedo: boolean;
 }
 
-export function useSpraypaintSession() {
+export function useSpraypaintSession(connection: Connection = SAME_ORIGIN) {
+  // Rebuilt only when the connection actually changes, so every callback below
+  // that closes over `api` keeps a stable identity across ordinary renders.
+  const api = useMemo(() => makeApi(connection), [connection]);
+
   const [query, setQuery] = useState<AskQuery>(DEFAULT_QUERY);
   const [result, setResult] = useState<AskResponse | null>(null);
   /** The query `result` was produced from. The basis for staleness. */
@@ -125,7 +130,7 @@ export function useSpraypaintSession() {
     if (sc.status === "fulfilled") setScenes(sc.value);
     if (vf.status === "fulfilled") setVerify(vf.value);
     if (ct.status === "fulfilled") setCount(ct.value.committed_count);
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     void refreshContext();
@@ -160,7 +165,7 @@ export function useSpraypaintSession() {
     } finally {
       if (seq === seqRef.current) setRunning(false);
     }
-  }, []);
+  }, [api]);
 
   /** Explicit Run. The only path that increments the count. */
   const run = useCallback(async () => {
@@ -290,8 +295,11 @@ export function useSpraypaintSession() {
     redo,
     refreshContext,
     setVerify,
-    startIndex: api.startIndex,
-    indexStatus: api.indexStatus,
+    // Wrapped rather than passed by reference: a bare `api.startIndex` captured
+    // at render time would keep calling whichever connection was current then,
+    // silently addressing the old server after a re-pair.
+    startIndex: useCallback(() => api.startIndex(), [api]),
+    indexStatus: useCallback(() => api.indexStatus(), [api]),
   };
 }
 

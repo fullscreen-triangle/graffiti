@@ -12,17 +12,25 @@
 // requests take as long as they take, and faking a delay on top of a real one
 // only makes the tool feel slower than it is.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import IdentityBadge from "./IdentityBadge";
 import OutputPanel from "./OutputPanel";
+import PairingScreen from "./PairingScreen";
 import QueryBar from "./QueryBar";
 import ResultsList from "./ResultsList";
-import { api, ApiError, type IndexStatus } from "@/lib/api";
+import { ApiError, makeApi, type IndexStatus } from "@/lib/api";
+import { useConnection } from "@/hooks/useConnection";
 import { useSpraypaintSession } from "@/hooks/useSpraypaintSession";
 
 export default function IDE() {
-  const s = useSpraypaintSession();
+  const conn = useConnection();
+
+  // Hooks cannot be called conditionally, so the session is always constructed —
+  // it simply addresses a server that is not there until pairing succeeds. The
+  // early returns below happen after every hook has run.
+  const s = useSpraypaintSession(conn.connection);
+  const api = useMemo(() => makeApi(conn.connection), [conn.connection]);
   const [split, setSplit] = useState(0.52);
   const [indexJob, setIndexJob] = useState<IndexStatus | null>(null);
 
@@ -39,7 +47,7 @@ export default function IDE() {
       // server is unreachable — `refreshContext` reports that condition.
       void s.refreshContext();
     }
-  }, [s]);
+  }, [s, api]);
 
   // Poll only while a build is actually running.
   useEffect(() => {
@@ -54,7 +62,7 @@ export default function IDE() {
       }
     }, 1000);
     return () => clearInterval(t);
-  }, [indexJob?.running, s]);
+  }, [indexJob?.running, s, api]);
 
   const startIndex = useCallback(async () => {
     try {
@@ -70,7 +78,7 @@ export default function IDE() {
         detail: e instanceof ApiError ? e.message : String(e),
       });
     }
-  }, []);
+  }, [api]);
 
   // Column drag.
   const [dragging, setDragging] = useState(false);
@@ -109,6 +117,24 @@ export default function IDE() {
   const noIndex = s.health !== null && !s.health.has_index;
   const unreachable = s.error?.code === "unreachable";
 
+  // Every hook above has now run, so these returns are safe.
+  if (conn.status === "probing") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-neutral-950 text-xs text-neutral-600">
+        looking for a spraypaint server…
+      </div>
+    );
+  }
+  if (conn.status === "unpaired") {
+    return (
+      <PairingScreen
+        onConnect={conn.connect}
+        connecting={conn.connecting}
+        error={conn.error}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-neutral-200">
       <div className="flex h-[30px] shrink-0 items-center gap-3 border-b border-neutral-800 bg-neutral-900 px-3 text-xs">
@@ -120,6 +146,22 @@ export default function IDE() {
           <span className="font-mono text-[10px] text-neutral-600">v{s.health.version}</span>
         )}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-neutral-500">
+          {conn.status === "paired" && (
+            <>
+              <span
+                title="This page is driving a spraypaint binary on your machine."
+                className="rounded border border-emerald-800 px-1.5 py-px font-mono text-[10px] text-emerald-400"
+              >
+                paired · {conn.connection.baseUrl.replace(/^https?:\/\//, "")}
+              </span>
+              <button
+                onClick={conn.disconnect}
+                className="text-neutral-600 underline-offset-2 hover:text-neutral-400 hover:underline"
+              >
+                disconnect
+              </button>
+            </>
+          )}
           {s.running && <span className="text-sky-400">running…</span>}
           {s.stale && !s.running && (
             <span className="text-amber-500">query changed — results are from a previous run</span>

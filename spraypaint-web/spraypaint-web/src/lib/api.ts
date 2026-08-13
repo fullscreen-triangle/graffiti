@@ -6,9 +6,18 @@
 // the web tool is a view over `spraypaint … --json`, and it never simulates a
 // result.
 //
-// Requests are same-origin and relative. The UI is served by the binary itself,
-// so there is no host to configure, no CORS, and no cross-origin request that
-// the server's Host check would (correctly) reject with 421.
+// Requests go to one of two places, decided by the `Connection` passed in (see
+// `connection.ts`): the page's own origin when the binary serves this UI, or an
+// absolute `http://127.0.0.1:PORT` with a bearer token when a hosted copy of the
+// page has been paired via `spraypaint serve --pair`. Nothing else is reachable
+// — the server rejects any other origin with 403 and any other Host with 421.
+
+import {
+  type Connection,
+  SAME_ORIGIN,
+  isLoopbackUrl,
+  isSameOrigin,
+} from "./connection";
 
 /** A query, in the form the CLI takes it. Maps 1:1 to argv. */
 export interface AskQuery {
@@ -167,21 +176,46 @@ export class ApiError extends Error {
  * front of it) returns HTML, the status line becomes the message rather than a
  * misleading JSON parse error.
  */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  conn: Connection,
+  path: string,
+  init?: RequestInit
+): Promise<T> {
+  const url = conn.baseUrl ? `${conn.baseUrl}${path}` : path;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+  // Bearer only — never a `?token=` query parameter, which would land the secret
+  // in browser history, in any proxy log, and in the `Referer` of anything the
+  // page subsequently loads. The server accepts no other carrier.
+  if (conn.token) headers.Authorization = `Bearer ${conn.token}`;
+
+  const opts: RequestInit & { targetAddressSpace?: string } = { ...init, headers };
+  if (!isSameOrigin(conn) && isLoopbackUrl(conn.baseUrl)) {
+    // Local Network Access: declaring the target address space up front lets
+    // Chrome show its permission prompt instead of failing the request. Unknown
+    // to every other engine, where it is ignored as an unrecognised key.
+    opts.targetAddressSpace = "local";
+  }
+
   let res: Response;
   try {
-    res = await fetch(path, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    });
+    res = await fetch(url, opts);
   } catch (e) {
-    // fetch rejects only on a transport failure — the server is not running,
-    // or the page was opened from a file:// URL rather than served.
+    // fetch rejects only on a transport failure, and — importantly — a Local
+    // Network Access refusal is indistinguishable from one. Chrome reports both
+    // as a bare `TypeError: Failed to fetch`, so a paired connection cannot
+    // report which of the two happened and must name both possibilities.
+    const detail = e instanceof Error ? e.message : String(e);
     throw new ApiError(
       "unreachable",
-      `Cannot reach the spraypaint server. Is \`spraypaint serve\` still running? (${
-        e instanceof Error ? e.message : String(e)
-      })`,
+      isSameOrigin(conn)
+        ? `Cannot reach the spraypaint server. Is \`spraypaint serve\` still running? (${detail})`
+        : `Cannot reach ${conn.baseUrl}. Either \`spraypaint serve\` is not running there, ` +
+          `or the browser blocked the local-network request — check for a permission ` +
+          `prompt, and note that Safari refuses this outright. (${detail})`,
       0
     );
   }
@@ -211,30 +245,55 @@ function askBody(q: AskQuery): string {
   });
 }
 
-export const api = {
-  health: () => request<Health>("/api/health"),
+/** The API surface, bound to one connection. */
+export interface Api {
+  health: () => Promise<Health>;
+  ask: (q: AskQuery) => Promise<AskResponse>;
+  dryRun: (q: AskQuery) => Promise<AskResponse>;
+  identity: () => Promise<Identity>;
+  count: () => Promise<{ committed_count: number }>;
+  scenes: () => Promise<SceneInfo[]>;
+  verify: () => Promise<VerifyResponse>;
+  startIndex: () => Promise<{ status: string }>;
+  indexStatus: () => Promise<IndexStatus>;
+}
 
-  /**
-   * **Commits a search act** — increments the monotone count (Inv 2).
-   * Only an explicit Run may call this. Everything interactive uses `dryRun`.
-   */
-  ask: (q: AskQuery) =>
-    request<AskResponse>("/api/ask", { method: "POST", body: askBody(q) }),
+/** Bind the API to a connection. */
+export function makeApi(conn: Connection): Api {
+  return {
+    health: () => request<Health>(conn, "/api/health"),
 
-  /**
-   * Diagnostics with no answer committed. The count has no decrement path, so
-   * previewing through `ask` would inflate it permanently on every gesture.
-   */
-  dryRun: (q: AskQuery) =>
-    request<AskResponse>("/api/dry-run", { method: "POST", body: askBody(q) }),
+    /**
+     * **Commits a search act** — increments the monotone count (Inv 2).
+     * Only an explicit Run may call this. Everything interactive uses `dryRun`.
+     */
+    ask: (q: AskQuery) =>
+      request<AskResponse>(conn, "/api/ask", { method: "POST", body: askBody(q) }),
 
-  identity: () => request<Identity>("/api/identity"),
-  count: () => request<{ committed_count: number }>("/api/count"),
-  scenes: () => request<SceneInfo[]>("/api/scenes"),
+    /**
+     * Diagnostics with no answer committed. The count has no decrement path, so
+     * previewing through `ask` would inflate it permanently on every gesture.
+     */
+    dryRun: (q: AskQuery) =>
+      request<AskResponse>(conn, "/api/dry-run", { method: "POST", body: askBody(q) }),
 
-  /** Always HTTP 200, including on a breach — `pass:false` is a real answer. */
-  verify: () => request<VerifyResponse>("/api/verify"),
+    identity: () => request<Identity>(conn, "/api/identity"),
+    count: () => request<{ committed_count: number }>(conn, "/api/count"),
+    scenes: () => request<SceneInfo[]>(conn, "/api/scenes"),
 
-  startIndex: () => request<{ status: string }>("/api/index", { method: "POST" }),
-  indexStatus: () => request<IndexStatus>("/api/index/status"),
-};
+    /** Always HTTP 200, including on a breach — `pass:false` is a real answer. */
+    verify: () => request<VerifyResponse>(conn, "/api/verify"),
+
+    startIndex: () => request<{ status: string }>(conn, "/api/index", { method: "POST" }),
+    indexStatus: () => request<IndexStatus>(conn, "/api/index/status"),
+  };
+}
+
+/**
+ * The same-origin API — correct whenever the binary serves this page.
+ *
+ * Kept as a named export so code that never pairs stays unchanged, and so the
+ * probe that *detects* mode 1 has something to call before any connection has
+ * been chosen.
+ */
+export const api: Api = makeApi(SAME_ORIGIN);

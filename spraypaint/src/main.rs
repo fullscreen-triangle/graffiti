@@ -69,6 +69,14 @@ struct ServeArgs {
     /// Reload index.json on every request instead of caching it by mtime+len.
     #[arg(long)]
     no_cache: bool,
+    /// Let a hosted copy of the UI at ORIGIN drive this server, authorised by a
+    /// printed token.
+    ///
+    /// Without this the server answers same-origin loopback requests only, and a
+    /// web page cannot reach it at all. With it, exactly one origin may — and
+    /// only when it presents the token printed at startup.
+    #[arg(long, value_name = "ORIGIN")]
+    pair: Option<String>,
     /// Required to bind a non-loopback address. See the warning it prints.
     #[arg(long)]
     i_know_this_is_public: bool,
@@ -193,6 +201,17 @@ fn cmd_serve(a: ServeArgs) -> Result<()> {
         );
     }
 
+    // Validate and normalise the paired origin *before* binding, so a typo is a
+    // clear message at the prompt rather than a silent no-match later — which
+    // would look to the user like the token being wrong.
+    let pair_origin = match a.pair.as_deref() {
+        Some(raw) => Some(
+            spraypaint::serve::pairing::normalise_origin(raw)
+                .map_err(|e| anyhow::anyhow!("--pair {raw}: {e}"))?,
+        ),
+        None => None,
+    };
+
     spraypaint::serve::preflight(&root_dir, a.allow_index);
     spraypaint::serve::run(spraypaint::serve::ServeConfig {
         root: root_dir,
@@ -201,6 +220,7 @@ fn cmd_serve(a: ServeArgs) -> Result<()> {
         allow_index: a.allow_index,
         no_cache: a.no_cache,
         open: a.open,
+        pair_origin,
     })
 }
 

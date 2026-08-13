@@ -226,7 +226,7 @@ pub fn route(state: &ServerState, mut req: Request, path: &str, url: &str) {
         match read_body(&mut req) {
             Ok(b) => b,
             Err(e) => {
-                json(req, 413, err("bad_request", &format!("{e:#}")));
+                json(state, req, 413, err("bad_request", &format!("{e:#}")));
                 return;
             }
         }
@@ -247,10 +247,9 @@ pub fn route(state: &ServerState, mut req: Request, path: &str, url: &str) {
         (Method::Post, "/api/index") => start_index(state, req),
         (Method::Get, "/api/index/status") => index_status(state, req),
         (Method::Get, _) | (Method::Post, _) => {
-            json(req, 404, err("not_found", &format!("no such endpoint: {path}")))
+            json(state, req, 404, err("not_found", &format!("no such endpoint: {path}")))
         }
-        _ => json(
-            req,
+        _ => json(state, req,
             405,
             err("method_not_allowed", "use GET or POST"),
         ),
@@ -272,26 +271,25 @@ fn health(state: &ServerState, req: Request) {
         "allow_index": state.allow_index,
         "indexing": state.job.is_running(),
     });
-    json(req, 200, v.to_string());
+    json(state, req, 200, v.to_string());
 }
 
 /// Commit one search act. **This increments the monotone count.**
 fn ask(state: &ServerState, req: Request, pairs: &[(String, String)], body: &str) {
     let r = match parse_ask(pairs, body) {
         Ok(r) => r,
-        Err(m) => return json(req, 400, err("bad_request", &m)),
+        Err(m) => return json(state, req, 400, err("bad_request", &m)),
     };
     match actions::ask(&state.root, &r) {
         // Byte-for-byte the same renderer the CLI uses, so `--json` output and
         // the API response cannot drift apart.
-        Ok(resp) => json(
-            req,
+        Ok(resp) => json(state, req,
             200,
             output::ask_json(&resp.outcome, r.budget, resp.count, &resp.fingerprint),
         ),
         Err(e) => {
             let (code, b) = map_error(&e);
-            json(req, code, b)
+            json(state, req, code, b)
         }
     }
 }
@@ -302,17 +300,16 @@ fn ask(state: &ServerState, req: Request, pairs: &[(String, String)], body: &str
 fn dry_run(state: &ServerState, req: Request, pairs: &[(String, String)], body: &str) {
     let r = match parse_ask(pairs, body) {
         Ok(r) => r,
-        Err(m) => return json(req, 400, err("bad_request", &m)),
+        Err(m) => return json(state, req, 400, err("bad_request", &m)),
     };
     match actions::dry_run(&state.root, &r) {
-        Ok(resp) => json(
-            req,
+        Ok(resp) => json(state, req,
             200,
             output::ask_dry_run_json(&resp.outcome, r.budget, &resp.fingerprint),
         ),
         Err(e) => {
             let (code, b) = map_error(&e);
-            json(req, code, b)
+            json(state, req, code, b)
         }
     }
 }
@@ -320,22 +317,22 @@ fn dry_run(state: &ServerState, req: Request, pairs: &[(String, String)], body: 
 fn identity(state: &ServerState, req: Request) {
     match load_cached(state) {
         Ok(idx) => match serde_json::to_string(&idx.identity) {
-            Ok(s) => json(req, 200, s),
-            Err(e) => json(req, 500, err("internal", &e.to_string())),
+            Ok(s) => json(state, req, 200, s),
+            Err(e) => json(state, req, 500, err("internal", &e.to_string())),
         },
         Err(e) => {
             let (code, b) = map_error(&e);
-            json(req, code, b)
+            json(state, req, code, b)
         }
     }
 }
 
 fn count(state: &ServerState, req: Request) {
     match actions::count(&state.root) {
-        Ok(c) => json(req, 200, serde_json::json!({ "committed_count": c }).to_string()),
+        Ok(c) => json(state, req, 200, serde_json::json!({ "committed_count": c }).to_string()),
         Err(e) => {
             let (code, b) = map_error(&e);
-            json(req, code, b)
+            json(state, req, code, b)
         }
     }
 }
@@ -353,11 +350,11 @@ fn scenes(state: &ServerState, req: Request) {
                     })
                 })
                 .collect();
-            json(req, 200, serde_json::to_string(&v).unwrap_or_else(|_| "[]".into()))
+            json(state, req, 200, serde_json::to_string(&v).unwrap_or_else(|_| "[]".into()))
         }
         Err(e) => {
             let (code, b) = map_error(&e);
-            json(req, code, b)
+            json(state, req, code, b)
         }
     }
 }
@@ -396,14 +393,13 @@ fn verify(state: &ServerState, req: Request) {
         "inv3_search_not_fetch": inv(&rep.inv3),
         "inv4_phases": inv(&rep.inv4),
     });
-    json(req, 200, v.to_string());
+    json(state, req, 200, v.to_string());
 }
 
 /// Start a background index build. Gated four ways — see the module docs.
 fn start_index(state: &ServerState, req: Request) {
     if !state.allow_index {
-        return json(
-            req,
+        return json(state, req,
             403,
             err(
                 "index_disabled",
@@ -412,7 +408,7 @@ fn start_index(state: &ServerState, req: Request) {
         );
     }
     if state.job.is_running() {
-        return json(req, 409, err("index_running", "an index build is already running"));
+        return json(state, req, 409, err("index_running", "an index build is already running"));
     }
 
     // Preflight the lock without blocking: another *process* (a CLI `index`)
@@ -421,25 +417,23 @@ fn start_index(state: &ServerState, req: Request) {
     match crate::phase::PhaseGuard::try_construction(&state.root) {
         Ok(Some(guard)) => drop(guard),
         Ok(None) => {
-            return json(
-                req,
+            return json(state, req,
                 409,
                 err("index_running", "another process holds the construction lock"),
             )
         }
-        Err(e) => return json(req, 500, err("internal", &format!("{e:#}"))),
+        Err(e) => return json(state, req, 500, err("internal", &format!("{e:#}"))),
     }
 
     if state.job.start(state.root.clone(), SprayConfig::default()) {
         // 202 Accepted: the work is queued, not finished. The UI polls
         // /api/index/status rather than waiting on this response.
-        json(
-            req,
+        json(state, req,
             202,
             serde_json::json!({ "status": "running" }).to_string(),
         )
     } else {
-        json(req, 409, err("index_running", "an index build is already running"))
+        json(state, req, 409, err("index_running", "an index build is already running"))
     }
 }
 
@@ -450,7 +444,7 @@ fn index_status(state: &ServerState, req: Request) {
         "running": state.job.is_running(),
         "detail": s.detail(),
     });
-    json(req, 200, v.to_string());
+    json(state, req, 200, v.to_string());
 }
 
 #[cfg(test)]
