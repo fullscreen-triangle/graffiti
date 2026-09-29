@@ -187,6 +187,31 @@ export default function ReportTab({
         <Section n={3} title="Results">
           {result ? (
             <>
+              {result.coverage && (
+                <p className="mb-3 text-xs leading-relaxed text-neutral-400">
+                  <span
+                    className={`mr-2 font-semibold uppercase tracking-wider ${
+                      result.coverage.verdict === "covered"
+                        ? "text-emerald-400"
+                        : result.coverage.verdict === "partial"
+                          ? "text-amber-400"
+                          : "text-rose-400"
+                    }`}
+                  >
+                    {result.coverage.verdict}
+                  </span>
+                  {result.coverage.reason}. The returned passages carry{" "}
+                  <span className="font-mono">
+                    {(result.coverage.weight_share * 100).toFixed(0)}%
+                  </span>{" "}
+                  of the query&apos;s IDF weight; below{" "}
+                  <span className="font-mono">
+                    {(result.coverage.decline_below * 100).toFixed(0)}%
+                  </span>{" "}
+                  the search declines. <span className="text-neutral-200">Covered</span> means
+                  the words occur together, which an answer needs but does not guarantee.
+                </p>
+              )}
               <p className="mb-3 text-xs text-neutral-400">
                 {result.results.length} passage{result.results.length === 1 ? "" : "s"} returned
                 for terms{" "}

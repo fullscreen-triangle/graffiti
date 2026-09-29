@@ -87,12 +87,47 @@ come back is always decided by water-filling, so a flat listing and a grouped
 one contain exactly the same passages. There is no "global top-k" mode to
 compare against — the allocator *is* the retrieval rule.
 
+### Read the verdict before the passages
+
+Every `ask` opens with a **coverage verdict**. A lexical search always returns
+its best look-alike, whether or not the corpus contains what you asked about:
+ask a mailbox for a dentist and, if no mail mentions one, you get whoever writes
+most about the city. The verdict says which case you are in:
+
+| Verdict | Meaning |
+|---|---|
+| `covered` | One returned passage contains every query term. Necessary for an answer, **not** sufficient. |
+| `partial` | Returned passages carry at least half of the query's IDF weight, but no single passage has every term. |
+| `declined` | They carry less than half. What the query is specifically about is not in what came back. |
+
+Terms are weighted by IDF, and a term the corpus has never seen gets the
+maximum weight: the absent word is usually the one the query is about.
+
+```
+declined — returned passages carry 19% of the query's weight; not in the corpus: suitable, dentist
+  suitable             weight  2.08  not in corpus
+  dentist              weight  2.08  not in corpus
+  greifswald           weight  0.98  in 1 doc(s), returned
+```
+
+`declined` does not mean the search failed. It means this corpus cannot answer
+the question and another source is needed; `not returned` (as opposed to
+`not in corpus`) means raising `-k` may help instead. `--dry-run` reports the
+verdict without committing an act, so it costs nothing to check first.
+
+Each passage shows its **evidence**, the few lines where the query's terms are
+densest, with line numbers and the terms it matched. It does not show the first
+line of its 40-line window. Overlapping windows of one file are returned once.
+In `--json`, `coverage` carries the verdict and per-term table, and each result
+carries `matched_terms`, `evidence_start_line` and `evidence_end_line`; `snippet`
+holds the evidence lines.
+
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `spraypaint index [--root DIR] [--dry-run] [--window N] [--overlap N]` | Build `.spraypaint/index.json`. |
-| `spraypaint ask "<query>" [--root DIR] [-k N] [--json] [--flat] [--scenes a,b] [--dry-run]` | Search. `--dry-run` prints diagnostics (price, allocation) and does **not** commit an act. |
+| `spraypaint ask "<query>" [--root DIR] [-k N] [--json] [--flat] [--scenes a,b] [--dry-run]` | Search. `--dry-run` prints diagnostics (coverage verdict, price, allocation) and does **not** commit an act. |
 | `spraypaint identity [--json]` | The conserved identity fingerprint + χ (Inv 1). |
 | `spraypaint count [--json]` | The monotone committed count (Inv 2). |
 | `spraypaint scenes [--json]` | Detected/overridden scenes. |

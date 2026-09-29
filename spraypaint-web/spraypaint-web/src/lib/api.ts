@@ -59,7 +59,14 @@ export interface AskAllocation {
   median_score: number | null;
 }
 
-/** One returned passage. `snippet` is re-read from disk at query time (Inv 3). */
+/**
+ * One returned passage. `snippet` is re-read from disk at query time (Inv 3).
+ *
+ * From 0.2.0 `snippet` holds the evidence lines — the few lines where the
+ * query's terms are densest — located by `evidence_start_line`/`evidence_end_line`.
+ * Before 0.2.0 it was the window's first non-empty line and the three fields
+ * below are absent; a hosted UI can be paired with either, so they are optional.
+ */
 export interface AskResult {
   scene: string;
   path: string;
@@ -67,6 +74,37 @@ export interface AskResult {
   end_line: number;
   score: number;
   snippet: string;
+  evidence_start_line?: number;
+  evidence_end_line?: number;
+  /** Query terms this passage contains, in query order. */
+  matched_terms?: string[];
+}
+
+/** Whether the corpus contains what the query is about. */
+export type Verdict = "covered" | "partial" | "declined";
+
+export interface TermCoverage {
+  term: string;
+  /** Documents containing the term. 0 means the corpus has never seen it. */
+  df: number;
+  /** IDF weight; maximal when `df` is 0. */
+  weight: number;
+  /** Whether any returned passage contains it. */
+  in_results: boolean;
+}
+
+/**
+ * The verdict every ask ends with (0.2.0+). `covered` means one returned
+ * passage holds every query term — necessary for an answer, not sufficient.
+ * `declined` means the returned passages carry less than `decline_below` of
+ * the query's weight: what the query is about is not in what came back.
+ */
+export interface Coverage {
+  verdict: Verdict;
+  reason: string;
+  weight_share: number;
+  decline_below: number;
+  terms: TermCoverage[];
 }
 
 /**
@@ -80,6 +118,8 @@ export interface AskResult {
  */
 export interface AskResponse {
   dry_run?: boolean;
+  /** Absent from binaries before 0.2.0. */
+  coverage?: Coverage;
   query_terms: string[];
   budget: number;
   /** Clearing price p* — an **output** of water-filling, never an input. */

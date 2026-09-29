@@ -89,8 +89,16 @@ pub struct Identity {
 impl CorpusStats {
     /// IDF of a term id (Okapi BM25 idf with +0.5 smoothing, floored at 0).
     pub fn idf(&self, term_id: usize) -> f64 {
+        self.idf_of_df(self.global_df.get(term_id).copied().unwrap_or(0))
+    }
+
+    /// IDF for a document frequency. Taking `df` rather than a term id lets a
+    /// query term the corpus has never seen be weighted too (`df = 0`, the
+    /// maximum) — which is what coverage needs: an absent term is the most
+    /// informative one, not a term to skip.
+    pub fn idf_of_df(&self, df: u32) -> f64 {
         let n = self.total_docs as f64;
-        let df = self.global_df.get(term_id).copied().unwrap_or(0) as f64;
+        let df = df as f64;
         // Standard BM25 idf; clamp to >= 0 so common terms never go negative.
         (((n - df + 0.5) / (df + 0.5)) + 1.0).ln().max(0.0)
     }

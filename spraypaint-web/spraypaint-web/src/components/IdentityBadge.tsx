@@ -53,8 +53,20 @@ export default function IdentityBadge({
   // about the corpus — worth marking, not hiding.
   const atFloor = identity.char_invariant <= identity.floor * (1 + 1e-9);
 
+  // Collapsed by default. These numbers describe the index and the allocator,
+  // not the answer, and leading with them put the machinery above the result.
+  // The summary line keeps the two a reader might need at a glance.
   return (
-    <div className="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-neutral-800 bg-neutral-900/40 px-4 py-3">
+    <details className="group border-b border-neutral-800 bg-neutral-900/40">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-1.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300">
+        <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        <span>diagnostics</span>
+        <span className="font-mono normal-case tracking-normal text-neutral-600">
+          {identity.fingerprint.slice(0, 12)} · {count ?? "—"} committed
+        </span>
+        {atFloor && <span className="normal-case tracking-normal text-amber-500">χ at floor</span>}
+      </summary>
+    <div className="flex flex-wrap items-start gap-x-6 gap-y-3 px-4 pb-3 pt-1">
       <Cell
         label="fingerprint"
         value={identity.fingerprint.slice(0, 16)}
@@ -105,5 +117,6 @@ export default function IdentityBadge({
         />
       </div>
     </div>
+    </details>
   );
 }
